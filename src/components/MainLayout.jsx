@@ -163,11 +163,15 @@ export default function MainLayout() {
             <button
               key={i}
               ref={item.path === "/settings" ? boshqarishRef : null}
-              onClick={() =>
-                item.path === "/settings"
-                  ? setMenuOpen((prev) => !prev)
-                  : navigate(item.path)
-              }
+              onClick={() => {
+                if (item.path === "/settings") {
+                  setMenuOpen(true);
+                  navigate("/dashboard");
+                } else {
+                  setMenuOpen(false);
+                  navigate(item.path);
+                }
+              }}
               title={collapsed ? item.label : undefined}
               className={`
                 flex items-center gap-3 px-3 py-2 rounded-xl w-full text-left
