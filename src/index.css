@@ -1,1 +1,100 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Design tokens ─────────────────────────────── */
+:root {
+  --bg-base:       #f3f4f6; /* gray-100 */
+  --bg-surface:    #ffffff;
+  --bg-elevated:   #f9fafb; /* gray-50  */
+  --bg-muted:      #f3f4f6;
+
+  --text-primary:  #111827; /* gray-900 */
+  --text-secondary:#6b7280; /* gray-500 */
+  --text-muted:    #9ca3af; /* gray-400 */
+
+  --border:        #e5e7eb; /* gray-200 */
+  --border-subtle: #f3f4f6; /* gray-100 */
+
+  --input-bg:      #ffffff;
+  --input-text:    #111827;
+  --input-placeholder: #9ca3af;
+}
+
+.dark {
+  --bg-base:       #0f172a; /* slate-900 */
+  --bg-surface:    #1e293b; /* slate-800 */
+  --bg-elevated:   #1e293b;
+  --bg-muted:      #334155; /* slate-700 */
+
+  --text-primary:  #f1f5f9; /* slate-100 */
+  --text-secondary:#94a3b8; /* slate-400 */
+  --text-muted:    #64748b; /* slate-500 */
+
+  --border:        #334155; /* slate-700 */
+  --border-subtle: #1e293b;
+
+  --input-bg:      #1e293b;
+  --input-text:    #f1f5f9;
+  --input-placeholder: #64748b;
+}
+
+/* ── Global token applications ─────────────────── */
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Surfaces */
+.dark .bg-white        { background-color: var(--bg-surface) !important; }
+.dark .bg-gray-50      { background-color: var(--bg-elevated) !important; }
+.dark .bg-gray-100     { background-color: var(--bg-base) !important; }
+
+/* Tinted card backgrounds */
+.dark .bg-orange-50    { background-color: #1c1917 !important; }
+.dark .bg-orange-100   { background-color: #292524 !important; }
+.dark .bg-amber-50     { background-color: #1c1917 !important; }
+.dark .bg-green-50     { background-color: #052e16 !important; }
+.dark .bg-violet-50    { background-color: #1e1b4b !important; }
+.dark .bg-violet-100   { background-color: #1e1b4b !important; }
+.dark .bg-pink-50      { background-color: #1f1333 !important; }
+.dark .bg-red-50       { background-color: #1f1315 !important; }
+
+/* Hover states */
+.dark .hover\:bg-gray-50:hover   { background-color: var(--bg-muted) !important; }
+.dark .hover\:bg-gray-100:hover  { background-color: var(--bg-muted) !important; }
+.dark .hover\:bg-violet-50:hover { background-color: #1e1b4b !important; }
+.dark .hover\:bg-red-50:hover    { background-color: #1f1315 !important; }
+
+/* Text */
+.dark .text-gray-800   { color: var(--text-primary) !important; }
+.dark .text-gray-700   { color: var(--text-primary) !important; }
+.dark .text-gray-600   { color: var(--text-secondary) !important; }
+.dark .text-gray-500   { color: var(--text-secondary) !important; }
+.dark .text-gray-400   { color: var(--text-muted) !important; }
+
+/* Borders */
+.dark .border-gray-100 { border-color: var(--border) !important; }
+.dark .border-gray-200 { border-color: var(--border) !important; }
+.dark .divide-gray-100 > * + * { border-color: var(--border) !important; }
+
+/* Inputs */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea,
+.dark select {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--border) !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--input-placeholder) !important;
+}
+
+/* Table rows hover */
+.dark tr:hover { background-color: var(--bg-elevated) !important; }
+
+/* Scrollbar (optional) */
+.dark ::-webkit-scrollbar-track { background: var(--bg-surface); }
+.dark ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }

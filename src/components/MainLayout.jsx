@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useDarkMode } from "../hooks/useDarkMode";
 import HomeIcon from "@mui/icons-material/Home";
 import PeopleIcon from "@mui/icons-material/People";
 import LayersIcon from "@mui/icons-material/Layers";
@@ -11,6 +12,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AddIcon from "@mui/icons-material/Add";
@@ -110,6 +112,7 @@ const NAV_ITEMS = [
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { dark, toggle: toggleDark } = useDarkMode();
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -357,8 +360,15 @@ export default function MainLayout() {
             </button>
 
             {/* Dark mode — tablet+ */}
-            <button className="hidden sm:flex w-9 h-9 rounded-full border border-gray-200 items-center justify-center hover:bg-violet-50 hover:border-violet-200 transition-colors cursor-pointer">
-              <DarkModeIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+            <button
+              onClick={toggleDark}
+              className="hidden sm:flex w-9 h-9 rounded-full border border-gray-200 items-center justify-center hover:bg-violet-50 hover:border-violet-200 transition-colors cursor-pointer"
+            >
+              {dark ? (
+                <LightModeIcon sx={{ fontSize: 18, color: "#F59E0B" }} />
+              ) : (
+                <DarkModeIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+              )}
             </button>
 
             {/* Avatar */}
