@@ -39,6 +39,7 @@ import IosShareIcon from "@mui/icons-material/IosShare";
 import EmailIcon from "@mui/icons-material/Email";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import MenuIcon from "@mui/icons-material/Menu";
 
 const BOSHQARISH_MENU = [
   {
@@ -111,6 +112,7 @@ export default function MainLayout() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const menuRef = useRef(null);
   const boshqarishRef = useRef(null);
 
@@ -126,9 +128,19 @@ export default function MainLayout() {
 
   return (
     <div className="relative flex h-screen bg-gray-100 overflow-hidden">
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-20 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       {/* ── Sidebar ─────────────────────────────────────────── */}
       <aside
-        className="relative flex flex-col bg-white border-r border-gray-200 transition-all duration-300"
+        className={`flex flex-col bg-white border-r border-gray-200 transition-all duration-300
+          fixed inset-y-0 left-0 z-30 md:relative md:z-auto
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
         style={{ width: collapsed ? 64 : 210 }}
       >
         {/* Logo */}
@@ -164,6 +176,7 @@ export default function MainLayout() {
               key={i}
               ref={item.path === "/settings" ? boshqarishRef : null}
               onClick={() => {
+                setMobileOpen(false);
                 if (item.path === "/settings") {
                   setMenuOpen(true);
                   navigate("/dashboard");
@@ -294,16 +307,24 @@ export default function MainLayout() {
       {/* ── Right panel ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 flex items-center justify-between px-6 py-3">
+        <header className="bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-6 py-3 gap-2">
           {/* Left side */}
           <div className="flex items-center gap-2">
-            {/* Calendar */}
-            <button className="w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer">
+            {/* Hamburger — mobile only */}
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden w-9 h-9 rounded-lg border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              <MenuIcon sx={{ fontSize: 20, color: "#374151" }} />
+            </button>
+
+            {/* Calendar — tablet+ */}
+            <button className="hidden sm:flex w-9 h-9 rounded-lg border border-gray-200 items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer">
               <CalendarTodayIcon sx={{ fontSize: 16, color: "#6B7280" }} />
             </button>
 
-            {/* Add + dropdown */}
-            <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+            {/* Add + dropdown — tablet+ */}
+            <div className="hidden sm:flex items-center border border-gray-200 rounded-lg overflow-hidden">
               <button className="flex items-center justify-center px-2.5 py-2 hover:bg-gray-50 transition-colors cursor-pointer border-r border-gray-200">
                 <AddIcon sx={{ fontSize: 18, color: "#374151" }} />
               </button>
@@ -312,8 +333,8 @@ export default function MainLayout() {
               </button>
             </div>
 
-            {/* Search */}
-            <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 w-52 hover:border-violet-300 transition-colors">
+            {/* Search — desktop+ */}
+            <div className="hidden md:flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 w-44 lg:w-52 hover:border-violet-300 transition-colors">
               <SearchIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
               <input
                 type="text"
@@ -323,48 +344,32 @@ export default function MainLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Language selector */}
-            <div
-              className="flex items-center gap-1 border border-gray-200 rounded-lg
-                         px-3 py-1.5 text-[13px] text-gray-600 cursor-pointer
-                         hover:bg-gray-50 transition-colors select-none"
-            >
+          <div className="flex items-center gap-2">
+            {/* Language — desktop+ */}
+            <div className="hidden lg:flex items-center gap-1 border border-gray-200 rounded-lg px-3 py-1.5 text-[13px] text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors select-none">
               <span>O'zbekcha</span>
               <ExpandMoreIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
             </div>
 
             {/* Notifications */}
-            <button
-              className="w-9 h-9 rounded-full border border-gray-200 flex items-center
-                         justify-center hover:bg-violet-50 hover:border-violet-200
-                         transition-colors cursor-pointer"
-            >
+            <button className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-violet-50 hover:border-violet-200 transition-colors cursor-pointer">
               <NotificationsNoneIcon sx={{ fontSize: 18, color: "#6B7280" }} />
             </button>
 
-            {/* Dark mode */}
-            <button
-              className="w-9 h-9 rounded-full border border-gray-200 flex items-center
-                         justify-center hover:bg-violet-50 hover:border-violet-200
-                         transition-colors cursor-pointer"
-            >
+            {/* Dark mode — tablet+ */}
+            <button className="hidden sm:flex w-9 h-9 rounded-full border border-gray-200 items-center justify-center hover:bg-violet-50 hover:border-violet-200 transition-colors cursor-pointer">
               <DarkModeIcon sx={{ fontSize: 18, color: "#6B7280" }} />
             </button>
 
             {/* Avatar */}
-            <div
-              className="w-9 h-9 rounded-full bg-violet-600 flex items-center
-                         justify-center cursor-pointer hover:ring-2 hover:ring-violet-300
-                         transition-all shadow"
-            >
+            <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-violet-300 transition-all shadow">
               <span className="text-white text-xs font-bold">C</span>
             </div>
           </div>
         </header>
 
         {/* Page content injected here */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>
@@ -636,114 +641,118 @@ export function Teachers() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-4 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={toggleAll}
-                  className="w-4 h-4 accent-violet-600 cursor-pointer"
-                />
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                <span className="flex items-center gap-1 cursor-pointer select-none">
-                  Nomi <ArrowDownwardIcon sx={{ fontSize: 13 }} />
-                </span>
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Guruh
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Telefon raqamlari
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Tug'ilgan sanasi
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Yaratilgan sana
-              </th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((t) => (
-              <tr
-                key={t.id}
-                className={`border-b border-gray-50 transition-colors ${selected.includes(t.id) ? "bg-violet-50" : "hover:bg-gray-50"}`}
-              >
-                <td className="px-4 py-3">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[700px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-4 py-3 w-10">
                   <input
                     type="checkbox"
-                    checked={selected.includes(t.id)}
-                    onChange={() => toggleOne(t.id)}
+                    checked={allChecked}
+                    onChange={toggleAll}
                     className="w-4 h-4 accent-violet-600 cursor-pointer"
                   />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-blue-400 shrink-0" />
-                    <span className="text-[13px] font-semibold text-gray-800">
-                      {t.name}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1">
-                    {t.groups.map((g, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500"
-                      >
-                        {g}
-                      </span>
-                    ))}
-                    {t.extra > 0 && (
-                      <span className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500">
-                        +{t.extra}
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-[13px] text-gray-600">
-                  {t.phone}
-                </td>
-                <td className="px-4 py-3 text-[13px] text-gray-600">
-                  {t.birth}
-                </td>
-                <td className="px-4 py-3 text-[13px] text-gray-600">
-                  {t.created}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-1">
-                    <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                      <VisibilityIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                      <FileDownloadIcon
-                        sx={{ fontSize: 16, color: "#9CA3AF" }}
-                      />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
-                    >
-                      <DeleteIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
-                      <EditIcon sx={{ fontSize: 15, color: "#9CA3AF" }} />
-                    </button>
-                  </div>
-                </td>
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  <span className="flex items-center gap-1 cursor-pointer select-none">
+                    Nomi <ArrowDownwardIcon sx={{ fontSize: 13 }} />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Guruh
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Telefon raqamlari
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Tug'ilgan sanasi
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Yaratilgan sana
+                </th>
+                <th className="px-4 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((t) => (
+                <tr
+                  key={t.id}
+                  className={`border-b border-gray-50 transition-colors ${selected.includes(t.id) ? "bg-violet-50" : "hover:bg-gray-50"}`}
+                >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(t.id)}
+                      onChange={() => toggleOne(t.id)}
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-blue-400 shrink-0" />
+                      <span className="text-[13px] font-semibold text-gray-800">
+                        {t.name}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {t.groups.map((g, i) => (
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500"
+                        >
+                          {g}
+                        </span>
+                      ))}
+                      {t.extra > 0 && (
+                        <span className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500">
+                          +{t.extra}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-gray-600">
+                    {t.phone}
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-gray-600">
+                    {t.birth}
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-gray-600">
+                    {t.created}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                        <VisibilityIcon
+                          sx={{ fontSize: 16, color: "#9CA3AF" }}
+                        />
+                      </button>
+                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                        <FileDownloadIcon
+                          sx={{ fontSize: 16, color: "#9CA3AF" }}
+                        />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
+                      >
+                        <DeleteIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+                      </button>
+                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
+                        <EditIcon sx={{ fontSize: 15, color: "#9CA3AF" }} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
         <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
           ← Previous
         </button>
@@ -774,7 +783,7 @@ export function Teachers() {
 
       {/* Drawer */}
       <div
-        className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
+        className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
         {/* Drawer header */}
@@ -1181,7 +1190,7 @@ export function Groups() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         {/* Jami guruhlar */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-start justify-between mb-3">
@@ -1238,113 +1247,115 @@ export function Groups() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Status
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Guruh nomi
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Kurs
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Davomiyligi
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Dars vaqti
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Xona
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                O'qituvchi
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Talabalar
-              </th>
-              <th className="px-4 py-3">
-                <RefreshIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.map((g) => (
-              <tr
-                key={g.id}
-                className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-              >
-                {/* Status toggle */}
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleActive(g.id)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${g.active ? "bg-violet-500" : "bg-gray-300"}`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${g.active ? "translate-x-4.5" : "translate-x-0.5"}`}
-                      />
-                    </button>
-                    <span
-                      className={`text-[11px] font-bold ${g.active ? "text-green-500" : "text-gray-400"}`}
-                    >
-                      {g.active ? "FAOL" : "NOFAOL"}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Guruh nomi */}
-                <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
-                  {g.name}
-                </td>
-
-                {/* Kurs */}
-                <td className="px-4 py-4">
-                  <span className="text-[13px] font-semibold text-violet-600">
-                    {g.course}
-                  </span>
-                </td>
-
-                {/* Davomiyligi */}
-                <td className="px-4 py-4 text-[13px] text-gray-600">
-                  {g.duration}
-                </td>
-
-                {/* Dars vaqti */}
-                <td className="px-4 py-4">
-                  <p className="text-[13px] font-semibold text-gray-800">
-                    {g.time}
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{g.days}</p>
-                </td>
-
-                {/* Xona */}
-                <td className="px-4 py-4 text-[13px] text-gray-600">
-                  {g.room}
-                </td>
-
-                {/* O'qituvchi */}
-                <td className="px-4 py-4 text-[13px] text-gray-600">
-                  {g.teacher}
-                </td>
-
-                {/* Talabalar */}
-                <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
-                  {g.students}
-                </td>
-
-                {/* Actions */}
-                <td className="px-4 py-4">
-                  <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                    <MoreVertIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[750px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Guruh nomi
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Kurs
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Davomiyligi
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Dars vaqti
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Xona
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  O'qituvchi
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Talabalar
+                </th>
+                <th className="px-4 py-3">
+                  <RefreshIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {groups.map((g) => (
+                <tr
+                  key={g.id}
+                  className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                >
+                  {/* Status toggle */}
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => toggleActive(g.id)}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${g.active ? "bg-violet-500" : "bg-gray-300"}`}
+                      >
+                        <span
+                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${g.active ? "translate-x-4.5" : "translate-x-0.5"}`}
+                        />
+                      </button>
+                      <span
+                        className={`text-[11px] font-bold ${g.active ? "text-green-500" : "text-gray-400"}`}
+                      >
+                        {g.active ? "FAOL" : "NOFAOL"}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Guruh nomi */}
+                  <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
+                    {g.name}
+                  </td>
+
+                  {/* Kurs */}
+                  <td className="px-4 py-4">
+                    <span className="text-[13px] font-semibold text-violet-600">
+                      {g.course}
+                    </span>
+                  </td>
+
+                  {/* Davomiyligi */}
+                  <td className="px-4 py-4 text-[13px] text-gray-600">
+                    {g.duration}
+                  </td>
+
+                  {/* Dars vaqti */}
+                  <td className="px-4 py-4">
+                    <p className="text-[13px] font-semibold text-gray-800">
+                      {g.time}
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{g.days}</p>
+                  </td>
+
+                  {/* Xona */}
+                  <td className="px-4 py-4 text-[13px] text-gray-600">
+                    {g.room}
+                  </td>
+
+                  {/* O'qituvchi */}
+                  <td className="px-4 py-4 text-[13px] text-gray-600">
+                    {g.teacher}
+                  </td>
+
+                  {/* Talabalar */}
+                  <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
+                    {g.students}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-4 py-4">
+                    <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                      <MoreVertIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* ── Drawer ──────────────────────────────────── */}
@@ -1358,7 +1369,7 @@ export function Groups() {
       />
 
       <div
-        className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
+        className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
         {/* Drawer header */}
@@ -1456,7 +1467,7 @@ export function Groups() {
             <label className="block text-[13px] font-semibold text-gray-700 mb-2">
               Dars kunlari <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {DAYS.map((day) => (
                 <label
                   key={day}
@@ -1994,127 +2005,129 @@ export function Students() {
         </div>
 
         {/* Table */}
-        <table className="w-full text-left">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="px-4 py-3 w-10">
-                <input
-                  type="checkbox"
-                  checked={allChecked}
-                  onChange={toggleAll}
-                  className="w-4 h-4 accent-violet-600 cursor-pointer"
-                />
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                <span className="flex items-center gap-1 cursor-pointer select-none">
-                  Nomi <ArrowDownwardIcon sx={{ fontSize: 13 }} />
-                </span>
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Guruh
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Telefon raqamlari
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Email
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Tug'ilgan sanasi
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Manzil
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Yaratilgan sana
-              </th>
-              <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                Amallar
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((s, idx) => {
-              const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-              return (
-                <tr
-                  key={s.id}
-                  className={`border-b border-gray-50 transition-colors ${selected.includes(s.id) ? "bg-violet-50" : "hover:bg-gray-50"}`}
-                >
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(s.id)}
-                      onChange={() => toggleOne(s.id)}
-                      className="w-4 h-4 accent-violet-600 cursor-pointer"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
-                        style={{ background: color }}
-                      >
-                        {s.name[0].toUpperCase()}
-                      </div>
-                      <span className="text-[13px] font-semibold text-gray-800">
-                        {s.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {s.groups.map((g, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500"
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={toggleAll}
+                    className="w-4 h-4 accent-violet-600 cursor-pointer"
+                  />
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  <span className="flex items-center gap-1 cursor-pointer select-none">
+                    Nomi <ArrowDownwardIcon sx={{ fontSize: 13 }} />
+                  </span>
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Guruh
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Telefon raqamlari
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Email
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Tug'ilgan sanasi
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Manzil
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Yaratilgan sana
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Amallar
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s, idx) => {
+                const color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                return (
+                  <tr
+                    key={s.id}
+                    className={`border-b border-gray-50 transition-colors ${selected.includes(s.id) ? "bg-violet-50" : "hover:bg-gray-50"}`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(s.id)}
+                        onChange={() => toggleOne(s.id)}
+                        className="w-4 h-4 accent-violet-600 cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-white text-[13px] font-bold"
+                          style={{ background: color }}
                         >
-                          {g}
+                          {s.name[0].toUpperCase()}
+                        </div>
+                        <span className="text-[13px] font-semibold text-gray-800">
+                          {s.name}
                         </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {s.phone}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {s.email}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {s.birth}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {s.address}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {s.created}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                        <VisibilityIcon
-                          sx={{ fontSize: 16, color: "#9CA3AF" }}
-                        />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
-                      >
-                        <DeleteIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-                      </button>
-                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
-                        <EditIcon sx={{ fontSize: 15, color: "#9CA3AF" }} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {s.groups.map((g, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500"
+                          >
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {s.phone}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {s.email}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {s.birth}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {s.address}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {s.created}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                          <VisibilityIcon
+                            sx={{ fontSize: 16, color: "#9CA3AF" }}
+                          />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(s.id)}
+                          className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
+                        >
+                          <DeleteIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+                        </button>
+                        <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
+                          <EditIcon sx={{ fontSize: 15, color: "#9CA3AF" }} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 flex-wrap gap-2">
           <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
             ← Previous
           </button>
@@ -2146,7 +2159,7 @@ export function Students() {
 
       {/* Drawer */}
       <div
-        className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
+        className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
         {/* Header */}
@@ -2631,7 +2644,7 @@ export function Rooms() {
             Hozircha xonalar mavjud emas.
           </div>
         ) : (
-          <div className="grid grid-cols-4 divide-x divide-y divide-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-gray-100">
             {rooms.map((room) => (
               <div
                 key={room.id}
@@ -2943,7 +2956,7 @@ export function Courses() {
             Hozircha kurslar mavjud emas.
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-4 p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
             {courses.map((course, i) => (
               <div
                 key={course.id}
@@ -3005,7 +3018,7 @@ export function Courses() {
 
       {/* Drawer */}
       <div
-        className="fixed top-0 right-0 h-full w-72 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
+        className="fixed top-0 right-0 h-full w-full sm:w-72 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
