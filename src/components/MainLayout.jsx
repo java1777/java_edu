@@ -33,7 +33,6 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ArchiveIcon from "@mui/icons-material/Archive";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
@@ -310,7 +309,7 @@ export default function MainLayout() {
       {/* ── Right panel ─────────────────────────────────────── */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-6 py-3 gap-2">
+        <header className="bg-gray-100 border-b border-gray-200 flex items-center justify-between px-3 md:px-6 py-3 gap-2">
           {/* Left side */}
           <div className="flex items-center gap-2">
             {/* Hamburger — mobile only */}
@@ -396,8 +395,9 @@ const TEACHERS_MOCK = [
     groups: ["N26", "n105", "B2"],
     extra: 4,
     phone: "+998901234567",
-    birth: "15 Mar 1990",
-    created: "10 Jan 2023",
+    email: "mohirbek@gmail.com",
+    address: "Toshkent",
+    created: "12.05.2026",
   },
   {
     id: 2,
@@ -405,8 +405,9 @@ const TEACHERS_MOCK = [
     groups: ["N12"],
     extra: 0,
     phone: "+998907654321",
-    birth: "22 Jun 1988",
-    created: "05 Feb 2023",
+    email: "sardor@gmail.com",
+    address: "Samarqand",
+    created: "05.02.2023",
   },
   {
     id: 3,
@@ -414,8 +415,9 @@ const TEACHERS_MOCK = [
     groups: ["C3", "A1"],
     extra: 0,
     phone: "+998913334455",
-    birth: "08 Nov 1995",
-    created: "18 Mar 2023",
+    email: "dilnoza@gmail.com",
+    address: "Buxoro",
+    created: "18.03.2023",
   },
   {
     id: 4,
@@ -423,8 +425,9 @@ const TEACHERS_MOCK = [
     groups: ["M7"],
     extra: 0,
     phone: "+998935556677",
-    birth: "30 Jan 1992",
-    created: "22 Apr 2023",
+    email: "jasur@gmail.com",
+    address: "Namangan",
+    created: "22.04.2023",
   },
   {
     id: 5,
@@ -432,8 +435,9 @@ const TEACHERS_MOCK = [
     groups: ["K9"],
     extra: 0,
     phone: "+998941112233",
-    birth: "14 Apr 1997",
-    created: "01 May 2023",
+    email: "kamola@gmail.com",
+    address: "Andijon",
+    created: "01.05.2023",
   },
   {
     id: 6,
@@ -441,8 +445,9 @@ const TEACHERS_MOCK = [
     groups: ["N26", "K9"],
     extra: 0,
     phone: "+998957778899",
-    birth: "25 Sep 1991",
-    created: "15 Jun 2023",
+    email: "otabek@gmail.com",
+    address: "Toshkent",
+    created: "15.06.2023",
   },
   {
     id: 7,
@@ -450,8 +455,9 @@ const TEACHERS_MOCK = [
     groups: ["B2"],
     extra: 0,
     phone: "+998919990011",
-    birth: "03 Dec 1994",
-    created: "20 Jul 2023",
+    email: "feruza@gmail.com",
+    address: "Farg'ona",
+    created: "20.07.2023",
   },
   {
     id: 8,
@@ -459,8 +465,9 @@ const TEACHERS_MOCK = [
     groups: ["C3", "A1", "M7"],
     extra: 1,
     phone: "+998902221133",
-    birth: "17 Feb 1989",
-    created: "08 Aug 2023",
+    email: "sherzod@gmail.com",
+    address: "Qarshi",
+    created: "08.08.2023",
   },
   {
     id: 9,
@@ -468,8 +475,9 @@ const TEACHERS_MOCK = [
     groups: ["n105", "N12"],
     extra: 0,
     phone: "+998968884455",
-    birth: "11 Jul 1996",
-    created: "14 Sep 2023",
+    email: "nilufar@gmail.com",
+    address: "Nukus",
+    created: "14.09.2023",
   },
   {
     id: 10,
@@ -477,9 +485,9 @@ const TEACHERS_MOCK = [
     groups: ["N26", "B2", "K9"],
     extra: 0,
     phone: "+998977776655",
-    birth: "28 Oct 1993",
-    created: "30 Oct 2023",
-    coin: "123 123",
+    email: "bobur@gmail.com",
+    address: "Jizzax",
+    created: "30.10.2023",
   },
 ];
 
@@ -489,6 +497,7 @@ const EMPTY_FORM = {
   fio: "",
   birthDate: "1990-03-01",
   gender: "",
+  address: "",
   photo: null,
   password: "",
   showPassword: false,
@@ -500,10 +509,12 @@ export function Teachers() {
   const [search, setSearch] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [groupInput, setGroupInput] = useState("");
   const [groups, setGroups] = useState([]);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [errors, setErrors] = useState({});
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [groupModalSearch, setGroupModalSearch] = useState("");
+  const [tempGroupModal, setTempGroupModal] = useState([]);
 
   const allChecked = selected.length === teachers.length;
   function toggleAll() {
@@ -522,7 +533,6 @@ export function Teachers() {
   function openDrawer() {
     setForm(EMPTY_FORM);
     setGroups([]);
-    setGroupInput("");
     setPhotoPreview(null);
     setErrors({});
     setDrawerOpen(true);
@@ -538,14 +548,18 @@ export function Teachers() {
     setPhotoPreview(URL.createObjectURL(file));
   }
 
-  function addGroup(e) {
-    if (e.key === "Enter" && groupInput.trim()) {
-      setGroups((p) => [...p, groupInput.trim()]);
-      setGroupInput("");
-    }
-  }
   function removeGroup(i) {
     setGroups((p) => p.filter((_, idx) => idx !== i));
+  }
+
+  function openGroupModal() {
+    setTempGroupModal([...groups]);
+    setGroupModalSearch("");
+    setGroupModalOpen(true);
+  }
+  function confirmGroupModal() {
+    setGroups(tempGroupModal);
+    setGroupModalOpen(false);
   }
 
   function validate() {
@@ -617,42 +631,32 @@ export function Teachers() {
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex items-center justify-between mb-3">
-        <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-          <FilterListIcon sx={{ fontSize: 17 }} /> Filters
-        </button>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 w-52 hover:border-violet-300 transition-colors bg-white">
-            <SearchIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-            <input
-              type="text"
-              placeholder="Search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="text-[13px] text-gray-600 placeholder-gray-400 outline-none bg-transparent w-full"
-            />
-          </div>
-          <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-            <ArchiveIcon sx={{ fontSize: 16 }} /> Arxiv
-          </button>
-        </div>
-      </div>
-
-      {/* Bulk actions */}
-      <div className="flex items-center gap-2 mb-3">
-        <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-          <IosShareIcon sx={{ fontSize: 16 }} /> Export
-        </button>
-        <button className="flex items-center gap-1.5 border border-red-200 rounded-xl px-3 py-2 text-[13px] text-red-500 hover:bg-red-50 transition-colors cursor-pointer">
-          <DeleteIcon sx={{ fontSize: 16 }} /> Delete
-        </button>
-      </div>
-
-      {/* Table */}
+      {/* Table card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Card header: filters + search */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
+            <FilterListIcon sx={{ fontSize: 17 }} /> Filters
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 w-52 hover:border-violet-300 transition-colors">
+              <SearchIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+              <input
+                type="text"
+                placeholder="Search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="text-[13px] text-gray-600 placeholder-gray-400 outline-none bg-transparent w-full"
+              />
+            </div>
+            <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
+              <ArchiveIcon sx={{ fontSize: 16 }} /> Arxiv
+            </button>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[700px]">
+          <table className="w-full text-left min-w-[800px]">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-4 py-3 w-10">
@@ -675,7 +679,10 @@ export function Teachers() {
                   Telefon raqamlari
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  Tug'ilgan sanasi
+                  Email
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  Manzil
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
                   Yaratilgan sana
@@ -726,7 +733,10 @@ export function Teachers() {
                     {t.phone}
                   </td>
                   <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {t.birth}
+                    {t.email}
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-gray-600">
+                    {t.address}
                   </td>
                   <td className="px-4 py-3 text-[13px] text-gray-600">
                     {t.created}
@@ -735,11 +745,6 @@ export function Teachers() {
                     <div className="flex items-center gap-1">
                       <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
                         <VisibilityIcon
-                          sx={{ fontSize: 16, color: "#9CA3AF" }}
-                        />
-                      </button>
-                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                        <FileDownloadIcon
                           sx={{ fontSize: 16, color: "#9CA3AF" }}
                         />
                       </button>
@@ -899,34 +904,32 @@ export function Teachers() {
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
               Guruh
             </label>
-            <div className="flex flex-wrap gap-1.5 border border-gray-200 focus-within:border-violet-400 rounded-xl px-3 py-2 transition-colors min-h-[42px]">
-              <SearchIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-              {groups.map((g, i) => (
-                <span
-                  key={i}
-                  className="flex items-center gap-1 bg-gray-100 text-gray-600 text-[12px] px-2 py-0.5 rounded-lg"
-                >
-                  {g}
-                  <button
-                    onClick={() => removeGroup(i)}
-                    className="text-gray-400 hover:text-red-500 cursor-pointer leading-none"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              <input
-                type="text"
-                placeholder="Guruh qidiring..."
-                value={groupInput}
-                onChange={(e) => setGroupInput(e.target.value)}
-                onKeyDown={addGroup}
-                className="text-[13px] text-gray-600 placeholder-gray-400 outline-none bg-transparent flex-1 min-w-[80px]"
-              />
+            <div className="border border-gray-200 rounded-xl px-3 py-2.5 min-h-11">
+              {groups.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {groups.map((g, i) => (
+                    <span
+                      key={i}
+                      className="flex items-center gap-1 bg-violet-50 text-violet-700 text-[12px] px-2 py-0.5 rounded-lg"
+                    >
+                      {g}
+                      <button
+                        onClick={() => removeGroup(i)}
+                        className="text-violet-400 hover:text-red-500 cursor-pointer leading-none"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={openGroupModal}
+                className="flex items-center gap-1 text-violet-600 text-[13px] font-semibold cursor-pointer hover:underline"
+              >
+                + Qo'shish
+              </button>
             </div>
-            <p className="text-[11px] text-gray-400 mt-1">
-              Enter bosib guruh qo'shing
-            </p>
           </div>
 
           {/* Jinsi */}
@@ -995,27 +998,36 @@ export function Teachers() {
             </label>
           </div>
 
-          {/* Parol qo'shish */}
+          {/* Manzil */}
           <div>
-            <button
-              onClick={() =>
-                setForm((p) => ({ ...p, showPassword: !p.showPassword }))
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Manzil
+            </label>
+            <input
+              type="text"
+              placeholder="Manzilni kiriting"
+              value={form.address}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, address: e.target.value }))
               }
-              className="text-[13px] text-violet-600 font-semibold cursor-pointer hover:underline"
-            >
-              + Parol qo'shish
-            </button>
-            {form.showPassword && (
-              <input
-                type="password"
-                placeholder="Parol kiriting"
-                value={form.password}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, password: e.target.value }))
-                }
-                className="mt-2 w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors"
-              />
-            )}
+              className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors"
+            />
+          </div>
+
+          {/* Parol */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Parol
+            </label>
+            <input
+              type="password"
+              placeholder="Parolni kiriting"
+              value={form.password}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, password: e.target.value }))
+              }
+              className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors"
+            />
           </div>
         </div>
 
@@ -1035,6 +1047,88 @@ export function Teachers() {
           </button>
         </div>
       </div>
+
+      {/* ── Guruh tanlash modali ──────────────────── */}
+      {groupModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/30"
+            onClick={() => setGroupModalOpen(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-80 flex flex-col z-10">
+            {/* Header */}
+            <div className="flex items-start justify-between px-5 pt-5 pb-3">
+              <div>
+                <p className="text-[15px] font-bold text-gray-800">
+                  Guruhga biriktirish
+                </p>
+                <p className="text-[12px] text-gray-400 mt-0.5">
+                  Bir yoki bir nechta guruhni tanlang
+                </p>
+              </div>
+              <button
+                onClick={() => setGroupModalOpen(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer shrink-0"
+              >
+                <CloseIcon sx={{ fontSize: 17, color: "#6B7280" }} />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="px-5 pb-3">
+              <input
+                type="text"
+                placeholder="Guruh qidirish..."
+                value={groupModalSearch}
+                onChange={(e) => setGroupModalSearch(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-violet-400 transition-colors"
+              />
+            </div>
+
+            {/* List */}
+            <div className="px-5 pb-3 flex flex-col gap-1 max-h-52 overflow-y-auto">
+              {AVAILABLE_GROUPS.filter((g) =>
+                g.toLowerCase().includes(groupModalSearch.toLowerCase()),
+              ).map((g, i) => (
+                <label
+                  key={i}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={tempGroupModal.includes(g)}
+                    onChange={() =>
+                      setTempGroupModal((p) =>
+                        p.includes(g) ? p.filter((x) => x !== g) : [...p, g],
+                      )
+                    }
+                    className="w-4 h-4 accent-violet-600 cursor-pointer"
+                  />
+                  <span className="text-[13px] font-medium text-gray-700">
+                    {g}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">
+              <button
+                onClick={() => setGroupModalOpen(false)}
+                className="px-4 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl cursor-pointer transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={confirmGroupModal}
+                className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl cursor-pointer transition-colors"
+              >
+                Qo'shish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
