@@ -7,26 +7,54 @@ import {
   Snackbar,
   InputAdornment,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import studyImg from "../assets/study.svg";
 import logoImg from "../assets/logo-md.png";
+import { saveToken } from "../hooks/useAuth";
+
+const API_URL = "https://najot-edu.softwareengineer.uz/api/v1/auth/login";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [login, setLogin] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [alertOpen, setAlertOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setAlertOpen(true);
-    setTimeout(() => {
-      setAlertOpen(false);
+    setErrorMsg("");
+    setLoading(true);
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data?.message || "Telefon yoki parol noto'g'ri");
+        return;
+      }
+      const token =
+        data?.token ??
+        data?.access_token ??
+        data?.accessToken ??
+        data?.data?.token ??
+        data?.data?.access_token;
+      if (token) saveToken(token);
+      setSuccessOpen(true);
       navigate("/dashboard");
-    }, 2000);
+    } catch {
+      setErrorMsg("Server bilan bog'lanib bo'lmadi");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,19 +95,15 @@ export default function Login() {
           className="w-full max-w-sm flex flex-col gap-5"
         >
           <div>
-            <label className="block text-sm text-gray-700 mb-1">Login</label>
+            <label className="block text-sm text-gray-700 mb-1">Telefon</label>
             <TextField
               fullWidth
-              placeholder="Loginni kiriting"
-              value={login}
-              onChange={(e) => setLogin(e.target.value)}
+              placeholder="998XXXXXXXXX"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               size="small"
               variant="outlined"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "4px",
-                },
-              }}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "4px" } }}
             />
           </div>
 
@@ -93,35 +117,40 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               size="small"
               variant="outlined"
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                      size="small"
-                    >
-                      {showPassword ? (
-                        <VisibilityOffIcon fontSize="small" />
-                      ) : (
-                        <VisibilityIcon fontSize="small" />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "4px",
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword((p) => !p)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? (
+                          <VisibilityOffIcon fontSize="small" />
+                        ) : (
+                          <VisibilityIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 },
               }}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "4px" } }}
             />
           </div>
+
+          {errorMsg && (
+            <Alert severity="error" sx={{ borderRadius: "4px" }}>
+              {errorMsg}
+            </Alert>
+          )}
 
           <Button
             type="submit"
             fullWidth
             variant="contained"
+            disabled={loading}
             sx={{
               backgroundColor: "#1a2b5e",
               "&:hover": { backgroundColor: "#14225a" },
@@ -131,7 +160,7 @@ export default function Login() {
               py: 1.2,
             }}
           >
-            Kirish
+            {loading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Kirish"}
           </Button>
         </form>
 
@@ -141,11 +170,7 @@ export default function Login() {
         </p>
       </div>
 
-      {/* MUI Snackbar Alert */}
-      <Snackbar
-        open={alertOpen}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
+      <Snackbar open={successOpen} anchorOrigin={{ vertical: "top", horizontal: "center" }}>
         <Alert severity="success" variant="filled" sx={{ width: "100%" }}>
           Muvaffaqiyatli kirildi! Dashboard ga o'tilmoqda...
         </Alert>

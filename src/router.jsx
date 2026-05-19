@@ -1,7 +1,15 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import MainLayout, { Teachers, Groups, Students, Payments, Settings, Rooms, Courses } from "./components/MainLayout";
+import MainLayout from "./layout/MainLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Teachers from "./pages/Teachers";
+import Groups from "./pages/Groups";
+import Students from "./pages/Students";
+import Payments from "./pages/Payments";
+import Settings from "./pages/Settings";
+import Rooms from "./pages/Rooms";
+import Courses from "./pages/Courses";
 
 const router = createBrowserRouter([
   {
@@ -13,7 +21,11 @@ const router = createBrowserRouter([
     element: <Login />,
   },
   {
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { path: "/dashboard",          element: <Dashboard /> },
       { path: "/dashboard/teachers", element: <Teachers /> },
