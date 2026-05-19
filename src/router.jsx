@@ -15,14 +15,14 @@ const router = createBrowserRouter([
   {
     element: <MainLayout />,
     children: [
-      { path: "/dashboard", element: <Dashboard /> },
-      { path: "/teachers",  element: <Teachers /> },
-      { path: "/groups",    element: <Groups /> },
-      { path: "/students",  element: <Students /> },
-      { path: "/payments",  element: <Payments /> },
-      { path: "/settings",  element: <Settings /> },
-      { path: "/rooms",     element: <Rooms /> },
-      { path: "/courses",   element: <Courses /> },
+      { path: "/dashboard",          element: <Dashboard /> },
+      { path: "/dashboard/teachers", element: <Teachers /> },
+      { path: "/dashboard/groups",   element: <Groups /> },
+      { path: "/dashboard/students", element: <Students /> },
+      { path: "/dashboard/payments", element: <Payments /> },
+      { path: "/dashboard/settings", element: <Settings /> },
+      { path: "/dashboard/rooms",    element: <Rooms /> },
+      { path: "/dashboard/courses",  element: <Courses /> },
     ],
   },
 ]);

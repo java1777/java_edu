@@ -20,14 +20,9 @@ import SearchIcon from "@mui/icons-material/Search";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
-import BusinessIcon from "@mui/icons-material/Business";
 import BadgeIcon from "@mui/icons-material/Badge";
-import FlagIcon from "@mui/icons-material/Flag";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import SendIcon from "@mui/icons-material/Send";
-import QuizIcon from "@mui/icons-material/Quiz";
-import FactCheckIcon from "@mui/icons-material/FactCheck";
 import CloseIcon from "@mui/icons-material/Close";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -46,40 +41,27 @@ const BOSHQARISH_MENU = [
   {
     icon: <AutoStoriesIcon fontSize="small" />,
     label: "Kurslar",
-    path: "/courses",
+    path: "/dashboard/courses",
   },
   {
     icon: <MeetingRoomIcon fontSize="small" />,
     label: "Xonalar",
-    path: "/rooms",
+    path: "/dashboard/rooms",
   },
   {
-    icon: <BusinessIcon fontSize="small" />,
-    label: "Filial",
-    path: "/branches",
-  },
-  { icon: <BadgeIcon fontSize="small" />, label: "Hodimlar", path: "/staff" },
-  { icon: <FlagIcon fontSize="small" />, label: "Sabablar", path: "/reasons" },
-  {
-    icon: <AdminPanelSettingsIcon fontSize="small" />,
-    label: "Rollar",
-    path: "/roles",
+    icon: <BadgeIcon fontSize="small" />,
+    label: "Hodimlar",
+    path: "/dashboard/staff",
   },
   {
     icon: <MonetizationOnIcon fontSize="small" />,
     label: "Coin",
-    path: "/coins",
+    path: "/dashboard/coins",
   },
   {
     icon: <SendIcon fontSize="small" />,
     label: "Xabar Yuborish",
-    path: "/messages",
-  },
-  { icon: <QuizIcon fontSize="small" />, label: "FAQ", path: "/faq" },
-  {
-    icon: <FactCheckIcon fontSize="small" />,
-    label: "Tekshiruv",
-    path: "/audit",
+    path: "/dashboard/messages",
   },
 ];
 
@@ -88,18 +70,22 @@ const NAV_ITEMS = [
   {
     icon: <PeopleIcon fontSize="small" />,
     label: "O'qituvchilar",
-    path: "/teachers",
+    path: "/dashboard/teachers",
   },
-  { icon: <LayersIcon fontSize="small" />, label: "Guruhlar", path: "/groups" },
+  {
+    icon: <LayersIcon fontSize="small" />,
+    label: "Guruhlar",
+    path: "/dashboard/groups",
+  },
   {
     icon: <SchoolIcon fontSize="small" />,
     label: "Talabalar",
-    path: "/students",
+    path: "/dashboard/students",
   },
   {
     icon: <CardGiftcardIcon fontSize="small" />,
     label: "To'lovlar",
-    path: "/payments",
+    path: "/dashboard/payments",
   },
   {
     icon: <TuneIcon fontSize="small" />,
@@ -254,18 +240,20 @@ export default function MainLayout() {
       {/* ── Boshqarish submenu panel ────────────────────────── */}
       <div
         ref={menuRef}
-        className="absolute top-0 h-full w-56 bg-white border-r border-gray-200 shadow-xl z-50 flex flex-col
-                   transition-all duration-500 ease-in-out"
+        className="absolute top-0 h-full w-56 bg-white border border-gray-200 shadow-2xl z-50 flex flex-col
+                   transition-all duration-700 ease-in-out rounded-2xl"
         style={{
           left: collapsed ? 64 : 210,
           opacity: menuOpen ? 1 : 0,
-          transform: menuOpen ? "translateX(0)" : "translateX(-16px)",
+          transform: menuOpen ? "translateX(0)" : "translateX(-20px)",
           pointerEvents: menuOpen ? "auto" : "none",
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-          <span className="font-bold text-gray-700 text-[15px]">Menu</span>
+          <span className="font-bold text-gray-700 text-[15px]">
+            management
+          </span>
           <button
             onClick={() => setMenuOpen(false)}
             className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
@@ -2610,28 +2598,12 @@ export function Settings() {
 }
 
 const BOSHQARISH_TABS = [
-  { label: "Kurslar", path: "/courses" },
-  { label: "Xonalar", path: "/rooms" },
-  { label: "Filiallar", path: "/branches" },
-  { label: "Xodimlar", path: "/staff" },
-  { label: "Sabablar", path: "/reasons" },
-  { label: "Rollar", path: "/roles" },
-  { label: "Coin", path: "/coins" },
-  { label: "Xabar yuborish", path: "/messages" },
-  { label: "Tekshiruv", path: "/audit" },
+  { label: "Kurslar", path: "/dashboard/courses" },
+  { label: "Xonalar", path: "/dashboard/rooms" },
+  { label: "Xodimlar", path: "/dashboard/staff" },
 ];
 
-const ROOMS_DATA = [
-  { id: 1, name: "genious room", capacity: 15 },
-  { id: 2, name: "Impact room", capacity: 12 },
-  { id: 3, name: "1A", capacity: 25 },
-  { id: 4, name: "205-xona", capacity: 32 },
-  { id: 5, name: "16-xona", capacity: 18 },
-  { id: 6, name: "5 xona", capacity: 30 },
-  { id: 7, name: "IELTS with Islombek", capacity: 20 },
-  { id: 8, name: "Beginner", capacity: 18 },
-  { id: 9, name: "99", capacity: 25 },
-];
+const ROOMS_DATA = [{ id: 1, name: "Autodesk", capacity: 20 }];
 
 export function Rooms() {
   const navigate = useNavigate();
@@ -2748,11 +2720,11 @@ export function Rooms() {
             Hozircha xonalar mavjud emas.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-x divide-y divide-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
             {rooms.map((room) => (
               <div
                 key={room.id}
-                className="flex items-center justify-between px-5 py-4"
+                className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center justify-between shadow-sm"
               >
                 <div>
                   <p className="text-[13px] font-bold text-gray-800">
@@ -2767,13 +2739,13 @@ export function Rooms() {
                     onClick={() => handleDelete(room.id)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                   >
-                    <DeleteIcon sx={{ fontSize: 17, color: "#9CA3AF" }} />
+                    <DeleteIcon sx={{ fontSize: 17, color: "#EF4444" }} />
                   </button>
                   <button
                     onClick={() => openEdit(room)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 transition-colors cursor-pointer"
                   >
-                    <EditIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+                    <EditIcon sx={{ fontSize: 16, color: "#7C3AED" }} />
                   </button>
                 </div>
               </div>
@@ -2878,70 +2850,97 @@ export function Rooms() {
 }
 
 const CARD_COLORS = [
-  "bg-white",
-  "bg-white",
-  "bg-amber-50",
-  "bg-green-50",
   "bg-violet-50",
+  "bg-blue-50",
+  "bg-green-50",
+  "bg-amber-50",
   "bg-pink-50",
+  "bg-orange-50",
 ];
 
 const COURSES_DATA = [
   {
     id: 1,
-    title: "Human Resources Manager",
-    description:
-      "A little about the company and the team that you'll be working with.",
-    duration: "90 min",
-    period: "3 oy",
-    price: "1 000 000 mln",
-  },
-  {
-    id: 2,
-    title: "Human Resources Manager",
-    description:
-      "A little about the company and the team that you'll be working with.",
-    duration: "90 min",
-    period: "3 oy",
-    price: "1 000 000 mln",
-  },
-  {
-    id: 3,
-    title: "Human Resources Manager",
-    description:
-      "A little about the company and the team that you'll be working with.",
-    duration: "90 min",
-    period: "3 oy",
-    price: "1 000 000 mln",
-  },
-  {
-    id: 4,
-    title: "Human Resources Manager",
-    description:
-      "A little about the company and the team that you'll be working with.",
-    duration: "90 min",
-    period: "3 oy",
-    price: "1 000 000 mln",
-  },
-  {
-    id: 5,
-    title: "Human Resources Manager",
-    description:
-      "A little about the company and the team that you'll be working with.",
-    duration: "90 min",
-    period: "3 oy",
-    price: "1 000 000 mln",
-  },
-  {
-    id: 6,
-    title: "Human Resources Manager",
-    description:
-      "A little about the company and the team that you'll be working with.",
-    duration: "90 min",
-    period: "3 oy",
-    price: "1 000 000 mln",
+    title: "Backend",
+    description: "Yaxshi",
+    duration: "120 min",
+    period: "6 oy",
+    price: "2400000",
+    color: "bg-violet-50",
   },
 ];
+
+function CustomSelect({ value, onChange, options, placeholder, error }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handler(e) {
+      if (!ref.current?.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        className={`w-full border rounded-xl px-3 py-2.5 pr-9 text-[13px] text-left outline-none transition-colors bg-white cursor-pointer flex items-center justify-between
+          ${error ? "border-red-400" : open ? "border-violet-400" : "border-gray-200 hover:border-gray-300"}`}
+      >
+        <span className={value ? "text-gray-800" : "text-gray-400"}>
+          {value || placeholder}
+        </span>
+        <span
+          className="absolute inset-y-0 right-3 flex items-center transition-transform duration-300"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
+          <ExpandMoreIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
+        </span>
+      </button>
+
+      <div
+        className="absolute left-0 right-0 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden"
+        style={{
+          top: "calc(100% + 4px)",
+          maxHeight: open ? "200px" : "0px",
+          opacity: open ? 1 : 0,
+          transition: "max-height 0.35s ease, opacity 0.25s ease",
+          pointerEvents: open ? "auto" : "none",
+        }}
+      >
+        <div className="py-1">
+          <button
+            type="button"
+            className="w-full text-left px-4 py-2.5 text-[13px] text-gray-400 hover:bg-gray-50 cursor-pointer"
+            onClick={() => {
+              onChange("");
+              setOpen(false);
+            }}
+          >
+            {placeholder}
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => {
+                onChange(opt);
+                setOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-[13px] cursor-pointer transition-colors
+                ${value === opt ? "bg-violet-50 text-violet-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function Courses() {
   const navigate = useNavigate();
@@ -3009,7 +3008,10 @@ export function Courses() {
         prev.map((c) => (c.id === editId ? { ...c, ...form } : c)),
       );
     } else {
-      setCourses((prev) => [...prev, { id: Date.now(), ...form }]);
+      setCourses((prev) => {
+        const color = CARD_COLORS[prev.length % CARD_COLORS.length];
+        return [...prev, { id: Date.now(), color, ...form }];
+      });
     }
     closeDrawer();
   }
@@ -3061,10 +3063,10 @@ export function Courses() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
-            {courses.map((course, i) => (
+            {courses.map((course) => (
               <div
                 key={course.id}
-                className={`${CARD_COLORS[i % CARD_COLORS.length]} rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3`}
+                className={`${course.color ?? "bg-violet-50"} rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -3122,70 +3124,136 @@ export function Courses() {
 
       {/* Drawer */}
       <div
-        className="fixed top-0 right-0 h-full w-full sm:w-72 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
+        className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-[15px] font-bold text-gray-800">
-            {editId !== null ? "Kursni tahrirlash" : "Kurs qo'shish"}
-          </span>
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100">
+          <div>
+            <p className="text-[16px] font-bold text-gray-800">
+              {editId !== null ? "Kursni tahrirlash" : "Kurs qo'shish"}
+            </p>
+            <p className="text-[12px] text-gray-400 mt-0.5">
+              Bu yerda siz yangi kurs qo'shishingiz mumkin.
+            </p>
+          </div>
           <button
             onClick={closeDrawer}
-            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer shrink-0"
           >
             <CloseIcon sx={{ fontSize: 18, color: "#6B7280" }} />
           </button>
         </div>
 
-        <div className="flex-1 px-5 py-5 flex flex-col gap-4 overflow-y-auto">
-          {[
-            { key: "title", label: "Nomi", placeholder: "Kurs nomi" },
-            {
-              key: "description",
-              label: "Tavsif",
-              placeholder: "Kurs haqida qisqacha",
-            },
-            {
-              key: "duration",
-              label: "Davomiyligi",
-              placeholder: "Masalan: 90 min",
-            },
-            { key: "period", label: "Muddati", placeholder: "Masalan: 3 oy" },
-            {
-              key: "price",
-              label: "Narxi",
-              placeholder: "Masalan: 1 000 000 mln",
-            },
-          ].map(({ key, label, placeholder }) => (
-            <div key={key}>
-              <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-                {label}{" "}
-                {key !== "description" && (
-                  <span className="text-red-500">*</span>
-                )}
-              </label>
-              <input
-                type="text"
-                placeholder={placeholder}
-                value={form[key]}
-                onChange={(e) => {
-                  setForm((p) => ({ ...p, [key]: e.target.value }));
-                  setErrors((p) => ({ ...p, [key]: "" }));
-                }}
-                className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors
-                  ${errors[key] ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
-              />
-              {errors[key] && (
-                <p className="text-[11px] text-red-500 mt-1">{errors[key]}</p>
-              )}
-            </div>
-          ))}
+        {/* Form */}
+        <div className="flex-1 px-6 py-5 flex flex-col gap-5 overflow-y-auto">
+          {/* Nomi */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Nomi <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="HR Manager..."
+              value={form.title}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, title: e.target.value }));
+                setErrors((p) => ({ ...p, title: "" }));
+              }}
+              className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors
+                ${errors.title ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
+            />
+            {errors.title && (
+              <p className="text-[11px] text-red-500 mt-1">{errors.title}</p>
+            )}
+          </div>
+
+          {/* Dars davomiyligi */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Dars davomiyligi <span className="text-red-500">*</span>
+            </label>
+            <CustomSelect
+              value={form.duration}
+              onChange={(v) => {
+                setForm((p) => ({ ...p, duration: v }));
+                setErrors((p) => ({ ...p, duration: "" }));
+              }}
+              options={["60 min", "90 min", "120 min"]}
+              placeholder="Tanlang"
+              error={errors.duration}
+            />
+            {errors.duration && (
+              <p className="text-[11px] text-red-500 mt-1">{errors.duration}</p>
+            )}
+          </div>
+
+          {/* Kurs davomiyligi */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Kurs davomiyligi (oylarda) <span className="text-red-500">*</span>
+            </label>
+            <CustomSelect
+              value={form.period}
+              onChange={(v) => {
+                setForm((p) => ({ ...p, period: v }));
+                setErrors((p) => ({ ...p, period: "" }));
+              }}
+              options={["1 oy", "3 oy", "6 oy"]}
+              placeholder="Tanlang"
+              error={errors.period}
+            />
+            {errors.period && (
+              <p className="text-[11px] text-red-500 mt-1">{errors.period}</p>
+            )}
+          </div>
+
+          {/* Narx */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Narx <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              placeholder="Narxini kiriting"
+              value={form.price}
+              onChange={(e) => {
+                setForm((p) => ({ ...p, price: e.target.value }));
+                setErrors((p) => ({ ...p, price: "" }));
+              }}
+              className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors
+                ${errors.price ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
+            />
+            {errors.price && (
+              <p className="text-[11px] text-red-500 mt-1">{errors.price}</p>
+            )}
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              Description
+            </label>
+            <textarea
+              rows={4}
+              placeholder="A little about the company and the team that you'll be working with."
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+              className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors resize-none"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">
+              This is a hint text to help user.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button
             onClick={closeDrawer}
-            className="px-4 py-2 text-[13px] font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
+            className="px-5 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
           >
             Bekor qilish
           </button>
