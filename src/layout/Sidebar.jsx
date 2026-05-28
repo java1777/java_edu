@@ -4,10 +4,20 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import { NAV_ITEMS } from "../constants/nav.jsx";
+import { useLanguage } from "../contexts/LanguageContext";
 
-export default function Sidebar({ collapsed, setCollapsed, menuOpen, setMenuOpen, mobileOpen, setMobileOpen, boshqarishRef }) {
+export default function Sidebar({
+  collapsed,
+  setCollapsed,
+  menuOpen,
+  setMenuOpen,
+  mobileOpen,
+  setMobileOpen,
+  boshqarishRef,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   return (
     <aside
@@ -58,7 +68,7 @@ export default function Sidebar({ collapsed, setCollapsed, menuOpen, setMenuOpen
                 navigate(item.path);
               }
             }}
-            title={collapsed ? item.label : undefined}
+            title={collapsed ? t(item.labelKey) : undefined}
             className={`
               flex items-center gap-3 px-3 py-2 rounded-xl w-full text-left
               transition-all duration-150 cursor-pointer
@@ -75,14 +85,16 @@ export default function Sidebar({ collapsed, setCollapsed, menuOpen, setMenuOpen
           >
             <span className="shrink-0">{item.icon}</span>
             {!collapsed && (
-              <span className="text-[13px] font-semibold">{item.label}</span>
+              <span className="text-[13px] font-semibold">
+                {t(item.labelKey)}
+              </span>
             )}
           </button>
         ))}
 
         {/* Logout */}
         <button
-          title={collapsed ? "Chiqish" : undefined}
+          title={collapsed ? t("nav.logout") : undefined}
           onClick={() => navigate("/login")}
           className="flex items-center gap-3 px-3 py-2 rounded-xl w-full text-left
                      text-red-400 hover:bg-red-50 hover:text-red-600
@@ -90,7 +102,7 @@ export default function Sidebar({ collapsed, setCollapsed, menuOpen, setMenuOpen
         >
           <LogoutIcon fontSize="small" className="shrink-0" />
           {!collapsed && (
-            <span className="text-[13px] font-semibold">Chiqish</span>
+            <span className="text-[13px] font-semibold">{t("nav.logout")}</span>
           )}
         </button>
       </nav>
@@ -104,10 +116,10 @@ export default function Sidebar({ collapsed, setCollapsed, menuOpen, setMenuOpen
             </div>
             <div>
               <p className="text-[13px] font-bold text-gray-800 leading-tight">
-                Obuna
+                {t("sidebar.subscription")}
               </p>
               <p className="text-[11px] text-orange-500 font-medium">
-                Obunangiz tugagan
+                {t("sidebar.expired")}
               </p>
             </div>
           </div>
@@ -116,7 +128,7 @@ export default function Sidebar({ collapsed, setCollapsed, menuOpen, setMenuOpen
                        text-white text-xs font-bold py-2 rounded-xl
                        transition-colors cursor-pointer shadow-sm"
           >
-            Obuna'ni yangilash
+            {t("sidebar.renew")}
           </button>
         </div>
       )}

@@ -1,57 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import PeopleIcon from "@mui/icons-material/People";
 import SchoolIcon from "@mui/icons-material/School";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CloseIcon from "@mui/icons-material/Close";
-
-const STUDENTS_MOCK_NAMES = [
-  "Ali Valiyev",
-  "Salim Qodirov",
-  "Bobur",
-  "Qodir Salimov",
-];
-
-const TEACHERS_MOCK_NAMES = [
-  "Mohirbek Toshmatov",
-  "Sardor Rahimov",
-  "Dilnoza Yusupova",
-  "Jasur Mirzayev",
-  "Kamola Nazarova",
-  "Otabek Xasanov",
-  "Feruza Abdullayeva",
-  "Sherzod Qodirov",
-  "Nilufar Ergasheva",
-  "Bobur Usmonov",
-];
-
-const GROUPS_DATA = [
-  {
-    id: 1,
-    active: true,
-    name: "N26",
-    course: "Backend",
-    duration: "6 oy",
-    time: "09:30",
-    days: "Du. Se. Chor. Pay. Ju",
-    room: "Autodesk",
-    teacher: "Mohirbek",
-    students: 1,
-  },
-  {
-    id: 2,
-    active: true,
-    name: "n105",
-    course: "Backend",
-    duration: "6 oy",
-    time: "16:00",
-    days: "Se. Pay. Shan",
-    room: "Autodesk",
-    teacher: "Mohirbek",
-    students: 4,
-  },
-];
+import { groupsApi } from "../api/groups";
+import { roomsApi } from "../api/rooms";
+import { coursesApi } from "../api/courses";
+import { teachersApi } from "../api/teachers";
+import { studentsApi } from "../api/students";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const DAYS = [
   "Dushanba",
@@ -75,19 +35,113 @@ const GROUP_EMPTY = {
   students: [],
 };
 
+function toUiGroup(g) {
+  const teachers = Array.isArray(g.teachers) ? g.teachers : [];
+  return {
+    id: g.id,
+    active: g.active ?? true,
+    name: g.name ?? "—",
+    course: g.course?.name ?? g.course ?? "—",
+    duration: g.course?.duration_month
+      ? `${g.course.duration_month} oy`
+      : (g.duration ?? "—"),
+    time: g.start_time ?? g.time ?? "—",
+    days: Array.isArray(g.week_day) ? g.week_day.join(", ") : (g.days ?? "—"),
+    room: g.room?.name ?? g.room ?? "—",
+    teacher:
+      teachers
+        .map((t) => t.full_name ?? t.name ?? t)
+        .filter(Boolean)
+        .join(", ") || "—",
+    teacherIds: teachers.map((t) => t.id).filter(Boolean),
+    students:
+      g.student_count ??
+      (Array.isArray(g.students) ? g.students.length : g.students) ??
+      0,
+  };
+}
+
 export default function Groups() {
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+
   const [activeTab, setActiveTab] = useState(0);
-  const [groups, setGroups] = useState(GROUPS_DATA);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState(GROUP_EMPTY);
   const [errors, setErrors] = useState({});
 
-  // Student modal
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [availableTeachers, setAvailableTeachers] = useState([]);
+  const [availableStudents, setAvailableStudents] = useState([]);
+
+  const loadGroups = useCallback(async () => {
+    setLoading(true);
+    setApiError("");
+    try {
+      const res = await groupsApi.getAll();
+      const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+      setGroups(list.map(toUiGroup));
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGroups();
+    roomsApi
+      .getAll()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.rooms ?? []);
+        setAvailableRooms(list);
+      })
+      .catch(() => {});
+    coursesApi
+      .getAll()
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.courses ?? []);
+        setAvailableCourses(list);
+      })
+      .catch(() => {});
+    teachersApi
+      .getAll()
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.teachers ?? []);
+        setAvailableTeachers(
+          list.map((tc) => ({
+            id: tc.id,
+            name: tc.full_name ?? tc.name ?? "—",
+          })),
+        );
+      })
+      .catch(() => {});
+    studentsApi
+      .getAll()
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.students ?? []);
+        setAvailableStudents(
+          list.map((s) => ({ id: s.id, name: s.full_name ?? s.name ?? "—" })),
+        );
+      })
+      .catch(() => {});
+  }, [loadGroups]);
+
+  // Modals
   const [studentModal, setStudentModal] = useState(false);
   const [studentSearch, setStudentSearch] = useState("");
   const [tempStudents, setTempStudents] = useState([]);
-
-  // Teacher modal
   const [teacherModal, setTeacherModal] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [tempTeachers, setTempTeachers] = useState([]);
@@ -106,7 +160,6 @@ export default function Groups() {
   function closeDrawer() {
     setDrawerOpen(false);
   }
-
   function toggleDay(day) {
     setForm((p) => ({
       ...p,
@@ -118,51 +171,59 @@ export default function Groups() {
 
   function validate() {
     const e = {};
-    if (!form.name.trim()) e.name = "Guruh nomi kiritilishi shart";
-    if (!form.course.trim()) e.course = "Kurs tanlanishi shart";
-    if (!form.room.trim()) e.room = "Xona tanlanishi shart";
-    if (form.days.length === 0) e.days = "Kamida bir kun tanlang";
-    if (!form.startDate) e.startDate = "Boshlanish sanasini kiriting";
+    if (!form.name.trim()) e.name = t("groups.form_name");
+    if (!form.course.trim()) e.course = t("groups.form_course");
+    if (!form.room.trim()) e.room = t("groups.form_room");
+    if (form.days.length === 0) e.days = t("groups.form_days");
+    if (!form.startDate) e.startDate = t("groups.form_start_date");
     return e;
   }
 
-  function handleSave() {
+  async function handleSave() {
     const e = validate();
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
-    setGroups((p) => [
-      ...p,
-      {
-        id: Date.now(),
-        active: true,
-        name: form.name,
-        course: form.course,
-        duration: "6 oy",
-        time: form.time,
-        days: form.days.map((d) => d.slice(0, 3)).join(". "),
-        room: form.room,
-        teacher: form.teachers[0] || "—",
-        students: form.students.length,
-      },
-    ]);
-    closeDrawer();
+    setSaving(true);
+    try {
+      const body = {
+        name: form.name.trim(),
+        course_id: Number(form.course),
+        room_id: Number(form.room),
+        days: form.days,
+        start_time: form.time,
+        start_date: form.startDate,
+        description: form.tavsif,
+      };
+      await groupsApi.create(body);
+      closeDrawer();
+      await loadGroups();
+    } catch (err) {
+      setErrors({ api: err.message });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const totalTeachers = [...new Set(groups.map((g) => g.teacher))].length;
-  const totalStudents = groups.reduce((sum, g) => sum + g.students, 0);
+  const totalTeachers = new Set(groups.flatMap((g) => g.teacherIds)).size;
+  const totalStudents = groups.reduce(
+    (sum, g) => sum + (Number(g.students) || 0),
+    0,
+  );
 
   return (
     <>
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-2xl font-extrabold text-gray-800">Guruhlar</h1>
+        <h1 className="text-2xl font-extrabold text-gray-800">
+          {t("groups.title")}
+        </h1>
         <button
           onClick={openDrawer}
           className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
         >
-          <span className="text-base leading-none">+</span> Guruh qo'shish
+          <span className="text-base leading-none">+</span> {t("groups.add")}
         </button>
       </div>
 
@@ -173,20 +234,19 @@ export default function Groups() {
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer
             ${activeTab === 0 ? "bg-white border border-gray-200 shadow-sm text-gray-800" : "text-gray-400 hover:text-gray-600"}`}
         >
-          <PeopleIcon sx={{ fontSize: 16 }} /> Guruhlar
+          <PeopleIcon sx={{ fontSize: 16 }} /> {t("groups.tab_groups")}
         </button>
         <button
           onClick={() => setActiveTab(1)}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer
             ${activeTab === 1 ? "bg-white border border-gray-200 shadow-sm text-gray-800" : "text-gray-400 hover:text-gray-600"}`}
         >
-          <CalendarTodayIcon sx={{ fontSize: 14 }} /> Arxiv
+          <CalendarTodayIcon sx={{ fontSize: 14 }} /> {t("groups.tab_archive")}
         </button>
       </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-        {/* Jami guruhlar */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-start justify-between mb-3">
             <PeopleIcon sx={{ fontSize: 22, color: "#6B7280" }} />
@@ -194,11 +254,14 @@ export default function Groups() {
               <MoreVertIcon sx={{ fontSize: 18 }} />
             </button>
           </div>
-          <p className="text-[13px] text-gray-500 mb-1">Jami guruhlar</p>
-          <p className="text-3xl font-extrabold text-gray-800">{groups.length}</p>
+          <p className="text-[13px] text-gray-500 mb-1">
+            {t("groups.stat_total")}
+          </p>
+          <p className="text-3xl font-extrabold text-gray-800">
+            {groups.length}
+          </p>
         </div>
 
-        {/* O'qituvchilar */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-start justify-between mb-3">
             <PeopleIcon sx={{ fontSize: 22, color: "#6B7280" }} />
@@ -206,11 +269,14 @@ export default function Groups() {
               <MoreVertIcon sx={{ fontSize: 18 }} />
             </button>
           </div>
-          <p className="text-[13px] text-gray-500 mb-1">O'qituvchilar</p>
-          <p className="text-3xl font-extrabold text-gray-800">{totalTeachers}</p>
+          <p className="text-[13px] text-gray-500 mb-1">
+            {t("groups.stat_teachers")}
+          </p>
+          <p className="text-3xl font-extrabold text-gray-800">
+            {totalTeachers}
+          </p>
         </div>
 
-        {/* O'quvchilar */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-start justify-between mb-3">
             <SchoolIcon sx={{ fontSize: 22, color: "#6B7280" }} />
@@ -218,9 +284,13 @@ export default function Groups() {
               <MoreVertIcon sx={{ fontSize: 18 }} />
             </button>
           </div>
-          <p className="text-[13px] text-gray-500 mb-1">O'quvchilar</p>
+          <p className="text-[13px] text-gray-500 mb-1">
+            {t("groups.stat_students")}
+          </p>
           <div className="flex items-center justify-between">
-            <p className="text-3xl font-extrabold text-gray-800">{totalStudents}</p>
+            <p className="text-3xl font-extrabold text-gray-800">
+              {totalStudents}
+            </p>
             <div className="flex -space-x-2">
               {["#7C3AED", "#EA580C", "#16A34A"].map((c, i) => (
                 <div
@@ -236,63 +306,126 @@ export default function Groups() {
 
       {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {apiError && (
+          <div className="px-5 py-3 bg-red-50 text-red-600 text-[13px] border-b border-red-100">
+            {apiError}
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[750px]">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Status</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Guruh nomi</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Kurs</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Davomiyligi</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Dars vaqti</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Xona</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">O'qituvchi</th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">Talabalar</th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_status")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_name")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_course")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_duration")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_time")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_room")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_teacher")}
+                </th>
+                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                  {t("groups.col_students")}
+                </th>
                 <th className="px-4 py-3">
                   <RefreshIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
                 </th>
               </tr>
             </thead>
             <tbody>
-              {groups.map((g) => (
-                <tr
-                  key={g.id}
-                  className="border-b border-gray-50 hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => toggleActive(g.id)}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${g.active ? "bg-violet-500" : "bg-gray-300"}`}
-                      >
-                        <span
-                          className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${g.active ? "translate-x-4.5" : "translate-x-0.5"}`}
-                        />
-                      </button>
-                      <span className={`text-[11px] font-bold ${g.active ? "text-green-500" : "text-gray-400"}`}>
-                        {g.active ? "FAOL" : "NOFAOL"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">{g.name}</td>
-                  <td className="px-4 py-4">
-                    <span className="text-[13px] font-semibold text-violet-600">{g.course}</span>
-                  </td>
-                  <td className="px-4 py-4 text-[13px] text-gray-600">{g.duration}</td>
-                  <td className="px-4 py-4">
-                    <p className="text-[13px] font-semibold text-gray-800">{g.time}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{g.days}</p>
-                  </td>
-                  <td className="px-4 py-4 text-[13px] text-gray-600">{g.room}</td>
-                  <td className="px-4 py-4 text-[13px] text-gray-600">{g.teacher}</td>
-                  <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">{g.students}</td>
-                  <td className="px-4 py-4">
-                    <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                      <MoreVertIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
-                    </button>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="px-4 py-10 text-center text-[13px] text-gray-400"
+                  >
+                    {t("common.loading")}
                   </td>
                 </tr>
-              ))}
+              ) : groups.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={9}
+                    className="px-4 py-10 text-center text-[13px] text-gray-400"
+                  >
+                    {t("groups.no_groups")}
+                  </td>
+                </tr>
+              ) : (
+                groups.map((g) => (
+                  <tr
+                    key={g.id}
+                    onClick={() => navigate(`/dashboard/groups/${g.id}`)}
+                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleActive(g.id);
+                          }}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${g.active ? "bg-violet-500" : "bg-gray-300"}`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${g.active ? "translate-x-4.5" : "translate-x-0.5"}`}
+                          />
+                        </button>
+                        <span
+                          className={`text-[11px] font-bold ${g.active ? "text-green-500" : "text-gray-400"}`}
+                        >
+                          {g.active ? t("common.active") : t("common.inactive")}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
+                      {g.name}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className="text-[13px] font-semibold text-violet-600">
+                        {g.course}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-[13px] text-gray-600">
+                      {g.duration}
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="text-[13px] font-semibold text-gray-800">
+                        {g.time}
+                      </p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {g.days}
+                      </p>
+                    </td>
+                    <td className="px-4 py-4 text-[13px] text-gray-600">
+                      {g.room}
+                    </td>
+                    <td className="px-4 py-4 text-[13px] text-gray-600">
+                      {g.teacher}
+                    </td>
+                    <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
+                      {g.students}
+                    </td>
+                    <td className="px-4 py-4">
+                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                        <MoreVertIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -313,11 +446,10 @@ export default function Groups() {
         className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
-        {/* Drawer header */}
         <div className="px-6 pt-6 pb-3 border-b border-gray-100">
           <div className="flex items-center justify-between mb-0.5">
             <span className="text-[16px] font-bold text-gray-800">
-              Guruh qo'shish
+              {t("groups.drawer_title")}
             </span>
             <button
               onClick={closeDrawer}
@@ -326,17 +458,20 @@ export default function Groups() {
               <CloseIcon sx={{ fontSize: 18, color: "#6B7280" }} />
             </button>
           </div>
-          <p className="text-[12px] text-gray-400">
-            Yangi guruh yaratish uchun quyidagi ma'lumotlarni kiriting.
-          </p>
+          <p className="text-[12px] text-gray-400">{t("groups.drawer_desc")}</p>
         </div>
 
-        {/* Form */}
         <div className="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
-          {/* Guruh nomi */}
+          {errors.api && (
+            <p className="text-[12px] text-red-500 bg-red-50 rounded-xl px-3 py-2">
+              {errors.api}
+            </p>
+          )}
+
+          {/* Group name */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Guruh nomi <span className="text-red-500">*</span>
+              {t("groups.form_name")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -353,10 +488,10 @@ export default function Groups() {
             )}
           </div>
 
-          {/* Kurs */}
+          {/* Course */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Kurs <span className="text-red-500">*</span>
+              {t("groups.form_course")} <span className="text-red-500">*</span>
             </label>
             <select
               value={form.course}
@@ -367,8 +502,10 @@ export default function Groups() {
               className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors bg-white ${errors.course ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
             >
               <option value="">Tanlang</option>
-              {["Backend", "Frontend", "Mobile", "UI/UX", "DevOps"].map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {availableCourses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name ?? c.title}
+                </option>
               ))}
             </select>
             {errors.course && (
@@ -376,10 +513,10 @@ export default function Groups() {
             )}
           </div>
 
-          {/* Xona */}
+          {/* Room */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Xona <span className="text-red-500">*</span>
+              {t("groups.form_room")} <span className="text-red-500">*</span>
             </label>
             <select
               value={form.room}
@@ -390,8 +527,10 @@ export default function Groups() {
               className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors bg-white ${errors.room ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
             >
               <option value="">Tanlang</option>
-              {["Autodesk", "Room 1", "Room 2", "Aula"].map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {availableRooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
               ))}
             </select>
             {errors.room && (
@@ -399,10 +538,10 @@ export default function Groups() {
             )}
           </div>
 
-          {/* Dars kunlari */}
+          {/* Days */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-2">
-              Dars kunlari <span className="text-red-500">*</span>
+              {t("groups.form_days")} <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {DAYS.map((day) => (
@@ -425,10 +564,10 @@ export default function Groups() {
             )}
           </div>
 
-          {/* Dars vaqti */}
+          {/* Time */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Dars vaqti <span className="text-red-500">*</span>
+              {t("groups.form_time")} <span className="text-red-500">*</span>
             </label>
             <input
               type="time"
@@ -438,10 +577,11 @@ export default function Groups() {
             />
           </div>
 
-          {/* Boshlanish sanasi */}
+          {/* Start date */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Boshlanish sanasi <span className="text-red-500">*</span>
+              {t("groups.form_start_date")}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
@@ -453,14 +593,16 @@ export default function Groups() {
               className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors ${errors.startDate ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
             />
             {errors.startDate && (
-              <p className="text-[11px] text-red-500 mt-1">{errors.startDate}</p>
+              <p className="text-[11px] text-red-500 mt-1">
+                {errors.startDate}
+              </p>
             )}
           </div>
 
-          {/* Tavsif */}
+          {/* Description */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Tavsif
+              {t("groups.form_description")}
             </label>
             <textarea
               rows={3}
@@ -473,25 +615,25 @@ export default function Groups() {
             />
           </div>
 
-          {/* O'qituvchilar */}
+          {/* Teachers */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              O'qituvchilar
+              {t("groups.form_teachers")}
             </label>
-            <div className="border border-gray-200 rounded-xl px-3 py-2 min-h-10.5">
+            <div className="border border-gray-200 rounded-xl px-3 py-2 min-h-10">
               {form.teachers.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">
-                  {form.teachers.map((t, i) => (
+                  {form.teachers.map((tc) => (
                     <span
-                      key={i}
+                      key={tc.id}
                       className="flex items-center gap-1 bg-violet-50 text-violet-700 text-[12px] px-2 py-0.5 rounded-lg"
                     >
-                      {t}{" "}
+                      {tc.name}
                       <button
                         onClick={() =>
                           setForm((p) => ({
                             ...p,
-                            teachers: p.teachers.filter((x) => x !== t),
+                            teachers: p.teachers.filter((x) => x.id !== tc.id),
                           }))
                         }
                         className="text-violet-400 hover:text-red-500 cursor-pointer"
@@ -510,30 +652,30 @@ export default function Groups() {
                 }}
                 className="flex items-center gap-1 text-violet-600 text-[13px] font-semibold cursor-pointer hover:underline"
               >
-                + Qo'shish
+                + {t("common.add")}
               </button>
             </div>
           </div>
 
-          {/* Talabalar */}
+          {/* Students */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Talabalar
+              {t("groups.form_students")}
             </label>
-            <div className="border border-gray-200 rounded-xl px-3 py-2 min-h-10.5">
+            <div className="border border-gray-200 rounded-xl px-3 py-2 min-h-10">
               {form.students.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">
-                  {form.students.map((s, i) => (
+                  {form.students.map((s) => (
                     <span
-                      key={i}
+                      key={s.id}
                       className="flex items-center gap-1 bg-violet-50 text-violet-700 text-[12px] px-2 py-0.5 rounded-lg"
                     >
-                      {s}{" "}
+                      {s.name}
                       <button
                         onClick={() =>
                           setForm((p) => ({
                             ...p,
-                            students: p.students.filter((x) => x !== s),
+                            students: p.students.filter((x) => x.id !== s.id),
                           }))
                         }
                         className="text-violet-400 hover:text-red-500 cursor-pointer"
@@ -552,25 +694,25 @@ export default function Groups() {
                 }}
                 className="flex items-center gap-1 text-violet-600 text-[13px] font-semibold cursor-pointer hover:underline"
               >
-                + Qo'shish
+                + {t("common.add")}
               </button>
             </div>
           </div>
         </div>
 
-        {/* Drawer footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button
             onClick={closeDrawer}
             className="px-4 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
           >
-            Bekor qilish
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleSave}
-            className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors cursor-pointer"
+            disabled={saving}
+            className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl transition-colors cursor-pointer"
           >
-            Saqlash
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </div>
@@ -585,9 +727,11 @@ export default function Groups() {
           <div className="relative bg-white rounded-2xl shadow-2xl w-80 flex flex-col z-10">
             <div className="flex items-start justify-between px-5 pt-5 pb-3">
               <div>
-                <p className="text-[15px] font-bold text-gray-800">Talaba qo'shish</p>
+                <p className="text-[15px] font-bold text-gray-800">
+                  {t("groups.student_modal")}
+                </p>
                 <p className="text-[12px] text-gray-400 mt-0.5">
-                  Bitta yoki bir nechta talabani tanlang
+                  {t("groups.student_modal_desc")}
                 </p>
               </div>
               <button
@@ -600,40 +744,49 @@ export default function Groups() {
             <div className="px-5 pb-3">
               <input
                 type="text"
-                placeholder="Talaba qidirish..."
+                placeholder={t("groups.student_search")}
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-violet-400 transition-colors"
               />
             </div>
             <div className="px-5 pb-3 flex flex-col gap-1 max-h-52 overflow-y-auto">
-              {STUDENTS_MOCK_NAMES.filter((s) =>
-                s.toLowerCase().includes(studentSearch.toLowerCase()),
-              ).map((s, i) => (
-                <label
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={tempStudents.includes(s)}
-                    onChange={() =>
-                      setTempStudents((p) =>
-                        p.includes(s) ? p.filter((x) => x !== s) : [...p, s],
-                      )
-                    }
-                    className="w-4 h-4 accent-violet-600 cursor-pointer"
-                  />
-                  <span className="text-[13px] text-gray-700">{s}</span>
-                </label>
-              ))}
+              {availableStudents.length === 0 && (
+                <p className="text-[12px] text-gray-400 text-center py-3">
+                  {t("groups.no_students")}
+                </p>
+              )}
+              {availableStudents
+                .filter((s) =>
+                  s.name.toLowerCase().includes(studentSearch.toLowerCase()),
+                )
+                .map((s) => (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={tempStudents.some((x) => x.id === s.id)}
+                      onChange={() =>
+                        setTempStudents((p) =>
+                          p.some((x) => x.id === s.id)
+                            ? p.filter((x) => x.id !== s.id)
+                            : [...p, s],
+                        )
+                      }
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
+                    />
+                    <span className="text-[13px] text-gray-700">{s.name}</span>
+                  </label>
+                ))}
             </div>
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">
               <button
                 onClick={() => setStudentModal(false)}
                 className="px-4 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl cursor-pointer transition-colors"
               >
-                Bekor qilish
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => {
@@ -642,7 +795,7 @@ export default function Groups() {
                 }}
                 className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl cursor-pointer transition-colors"
               >
-                Saqlash
+                {t("common.save")}
               </button>
             </div>
           </div>
@@ -659,9 +812,11 @@ export default function Groups() {
           <div className="relative bg-white rounded-2xl shadow-2xl w-80 flex flex-col z-10">
             <div className="flex items-start justify-between px-5 pt-5 pb-3">
               <div>
-                <p className="text-[15px] font-bold text-gray-800">O'qituvchi qo'shish</p>
+                <p className="text-[15px] font-bold text-gray-800">
+                  {t("groups.teacher_modal")}
+                </p>
                 <p className="text-[12px] text-gray-400 mt-0.5">
-                  Bitta yoki bir nechta o'qituvchini tanlang
+                  {t("groups.teacher_modal_desc")}
                 </p>
               </div>
               <button
@@ -674,40 +829,49 @@ export default function Groups() {
             <div className="px-5 pb-3">
               <input
                 type="text"
-                placeholder="O'qituvchi qidirish..."
+                placeholder={t("groups.teacher_search")}
                 value={teacherSearch}
                 onChange={(e) => setTeacherSearch(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-violet-400 transition-colors"
               />
             </div>
             <div className="px-5 pb-3 flex flex-col gap-1 max-h-52 overflow-y-auto">
-              {TEACHERS_MOCK_NAMES.filter((t) =>
-                t.toLowerCase().includes(teacherSearch.toLowerCase()),
-              ).map((t, i) => (
-                <label
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={tempTeachers.includes(t)}
-                    onChange={() =>
-                      setTempTeachers((p) =>
-                        p.includes(t) ? p.filter((x) => x !== t) : [...p, t],
-                      )
-                    }
-                    className="w-4 h-4 accent-violet-600 cursor-pointer"
-                  />
-                  <span className="text-[13px] text-gray-700">{t}</span>
-                </label>
-              ))}
+              {availableTeachers.length === 0 && (
+                <p className="text-[12px] text-gray-400 text-center py-3">
+                  {t("groups.no_teachers")}
+                </p>
+              )}
+              {availableTeachers
+                .filter((tc) =>
+                  tc.name.toLowerCase().includes(teacherSearch.toLowerCase()),
+                )
+                .map((tc) => (
+                  <label
+                    key={tc.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={tempTeachers.some((x) => x.id === tc.id)}
+                      onChange={() =>
+                        setTempTeachers((p) =>
+                          p.some((x) => x.id === tc.id)
+                            ? p.filter((x) => x.id !== tc.id)
+                            : [...p, tc],
+                        )
+                      }
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
+                    />
+                    <span className="text-[13px] text-gray-700">{tc.name}</span>
+                  </label>
+                ))}
             </div>
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">
               <button
                 onClick={() => setTeacherModal(false)}
                 className="px-4 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl cursor-pointer transition-colors"
               >
-                Bekor qilish
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => {
@@ -716,7 +880,7 @@ export default function Groups() {
                 }}
                 className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl cursor-pointer transition-colors"
               >
-                Saqlash
+                {t("common.save")}
               </button>
             </div>
           </div>

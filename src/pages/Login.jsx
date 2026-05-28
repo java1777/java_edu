@@ -160,7 +160,11 @@ export default function Login() {
               py: 1.2,
             }}
           >
-            {loading ? <CircularProgress size={22} sx={{ color: "#fff" }} /> : "Kirish"}
+            {loading ? (
+              <CircularProgress size={22} sx={{ color: "#fff" }} />
+            ) : (
+              "Kirish"
+            )}
           </Button>
         </form>
 
@@ -170,7 +174,10 @@ export default function Login() {
         </p>
       </div>
 
-      <Snackbar open={successOpen} anchorOrigin={{ vertical: "top", horizontal: "center" }}>
+      <Snackbar
+        open={successOpen}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
         <Alert severity="success" variant="filled" sx={{ width: "100%" }}>
           Muvaffaqiyatli kirildi! Dashboard ga o'tilmoqda...
         </Alert>

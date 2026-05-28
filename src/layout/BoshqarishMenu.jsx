@@ -1,10 +1,17 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import { BOSHQARISH_MENU } from "../constants/nav.jsx";
+import { useLanguage } from "../contexts/LanguageContext";
 
-export default function BoshqarishMenu({ menuOpen, setMenuOpen, collapsed, menuRef }) {
+export default function BoshqarishMenu({
+  menuOpen,
+  setMenuOpen,
+  collapsed,
+  menuRef,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useLanguage();
 
   return (
     <div
@@ -20,7 +27,9 @@ export default function BoshqarishMenu({ menuOpen, setMenuOpen, collapsed, menuR
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-        <span className="font-bold text-gray-700 text-[15px]">management</span>
+        <span className="font-bold text-gray-700 text-[15px]">
+          {t("nav.settings")}
+        </span>
         <button
           onClick={() => setMenuOpen(false)}
           className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
@@ -48,12 +57,16 @@ export default function BoshqarishMenu({ menuOpen, setMenuOpen, collapsed, menuR
           >
             <span
               className={
-                location.pathname === item.path ? "text-violet-600" : "text-gray-400"
+                location.pathname === item.path
+                  ? "text-violet-600"
+                  : "text-gray-400"
               }
             >
               {item.icon}
             </span>
-            <span className="text-[13px] font-semibold">{item.label}</span>
+            <span className="text-[13px] font-semibold">
+              {t(item.labelKey)}
+            </span>
           </button>
         ))}
       </nav>

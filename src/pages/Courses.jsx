@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import CloseIcon from "@mui/icons-material/Close";
 import CustomSelect from "../components/ui/CustomSelect";
 import { BOSHQARISH_TABS } from "../constants/nav.jsx";
+import { coursesApi } from "../api/courses";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const CARD_COLORS = [
   "bg-violet-50",
@@ -15,22 +17,27 @@ const CARD_COLORS = [
   "bg-orange-50",
 ];
 
-const COURSES_DATA = [
-  {
-    id: 1,
-    title: "Backend",
-    description: "Yaxshi",
-    duration: "120 min",
-    period: "6 oy",
-    price: "2400000",
-    color: "bg-violet-50",
-  },
-];
+function toUiCourse(c, i) {
+  return {
+    id: c.id,
+    title: c.name ?? c.title ?? "—",
+    description: c.description ?? "",
+    duration: c.duration_hours ? `${c.duration_hours} min` : (c.duration ?? ""),
+    period: c.duration_month ? `${c.duration_month} oy` : (c.period ?? ""),
+    price: c.price != null ? String(c.price) : "",
+    color: CARD_COLORS[i % CARD_COLORS.length],
+  };
+}
 
 export default function Courses() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [courses, setCourses] = useState(COURSES_DATA);
+  const { t } = useLanguage();
+
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({
@@ -42,9 +49,33 @@ export default function Courses() {
   });
   const [errors, setErrors] = useState({});
 
+  const loadCourses = useCallback(async () => {
+    setLoading(true);
+    setApiError("");
+    try {
+      const res = await coursesApi.getAll();
+      const list = Array.isArray(res) ? res : (res?.data ?? res?.courses ?? []);
+      setCourses(list.map(toUiCourse));
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
+
   function openAdd() {
     setEditId(null);
-    setForm({ title: "", description: "", duration: "", period: "", price: "" });
+    setForm({
+      title: "",
+      description: "",
+      duration: "",
+      period: "",
+      price: "",
+    });
     setErrors({});
     setDrawerOpen(true);
   }
@@ -69,39 +100,56 @@ export default function Courses() {
 
   function validate() {
     const e = {};
-    if (!form.title.trim()) e.title = "Nom kiritilishi shart";
-    if (!form.duration.trim()) e.duration = "Davomiylik kiritilishi shart";
-    if (!form.period.trim()) e.period = "Muddati kiritilishi shart";
-    if (!form.price.trim()) e.price = "Narxi kiritilishi shart";
+    if (!form.title.trim()) e.title = t("courses.form_name");
+    if (!form.duration.trim()) e.duration = t("courses.form_duration");
+    if (!form.period.trim()) e.period = t("courses.form_period");
+    if (!form.price.trim()) e.price = t("courses.form_price");
     return e;
   }
 
-  function handleSave() {
+  async function handleSave() {
     const e = validate();
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
-    if (editId !== null) {
-      setCourses((prev) =>
-        prev.map((c) => (c.id === editId ? { ...c, ...form } : c)),
-      );
-    } else {
-      setCourses((prev) => {
-        const color = CARD_COLORS[prev.length % CARD_COLORS.length];
-        return [...prev, { id: Date.now(), color, ...form }];
-      });
+    setSaving(true);
+    try {
+      const body = {
+        name: form.title.trim(),
+        description: form.description.trim(),
+        duration_hours: parseInt(form.duration),
+        duration_month: parseInt(form.period),
+        price: Number(form.price),
+      };
+      if (editId !== null) {
+        await coursesApi.update(editId, body);
+      } else {
+        await coursesApi.create(body);
+      }
+      closeDrawer();
+      await loadCourses();
+    } catch (err) {
+      setErrors({ api: err.message });
+    } finally {
+      setSaving(false);
     }
-    closeDrawer();
   }
 
-  function handleDelete(id) {
-    setCourses((prev) => prev.filter((c) => c.id !== id));
+  async function handleDelete(id) {
+    try {
+      await coursesApi.remove(id);
+      setCourses((prev) => prev.filter((c) => c.id !== id));
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   return (
     <>
-      <h1 className="text-2xl font-extrabold text-gray-800 mb-3">Boshqarish</h1>
+      <h1 className="text-2xl font-extrabold text-gray-800 mb-3">
+        {t("nav.settings")}
+      </h1>
 
       {/* Top tabs */}
       <div className="flex border-b border-gray-200 mb-5 overflow-x-auto">
@@ -116,29 +164,38 @@ export default function Courses() {
                   : "text-gray-400 hover:text-gray-700 border-transparent"
               }`}
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </div>
 
       {/* Card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
-        {/* Card header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-[15px] font-bold text-gray-800">Kurslar</span>
+          <span className="text-[15px] font-bold text-gray-800">
+            {t("courses.title")}
+          </span>
           <button
             onClick={openAdd}
             className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
           >
-            <span className="text-lg leading-none">+</span>
-            Kurslar qo'shish
+            <span className="text-lg leading-none">+</span> {t("courses.add")}
           </button>
         </div>
 
-        {/* Courses grid */}
-        {courses.length === 0 ? (
+        {apiError && (
+          <div className="px-5 py-3 bg-red-50 text-red-600 text-[13px] border-b border-red-100">
+            {apiError}
+          </div>
+        )}
+
+        {loading ? (
           <div className="py-12 text-center text-sm text-gray-400">
-            Hozircha kurslar mavjud emas.
+            {t("common.loading")}
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="py-12 text-center text-sm text-gray-400">
+            {t("courses.empty")}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
@@ -171,17 +228,17 @@ export default function Courses() {
                     </button>
                   </div>
                 </div>
-
-                {/* Tags */}
                 <div className="flex flex-wrap gap-1.5">
-                  {[course.duration, course.period, course.price].map((tag, j) => (
-                    <span
-                      key={j}
-                      className="px-2 py-0.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-500 font-medium"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                  {[course.duration, course.period, course.price].map(
+                    (tag, j) => (
+                      <span
+                        key={j}
+                        className="px-2 py-0.5 bg-white border border-gray-200 rounded-lg text-[11px] text-gray-500 font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ),
+                  )}
                 </div>
               </div>
             ))}
@@ -204,14 +261,15 @@ export default function Courses() {
         className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
-        {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-4 border-b border-gray-100">
           <div>
             <p className="text-[16px] font-bold text-gray-800">
-              {editId !== null ? "Kursni tahrirlash" : "Kurs qo'shish"}
+              {editId !== null
+                ? t("courses.drawer_edit")
+                : t("courses.drawer_add")}
             </p>
             <p className="text-[12px] text-gray-400 mt-0.5">
-              Bu yerda siz yangi kurs qo'shishingiz mumkin.
+              {t("courses.drawer_desc")}
             </p>
           </div>
           <button
@@ -222,12 +280,17 @@ export default function Courses() {
           </button>
         </div>
 
-        {/* Form */}
         <div className="flex-1 px-6 py-5 flex flex-col gap-5 overflow-y-auto">
-          {/* Nomi */}
+          {errors.api && (
+            <p className="text-[12px] text-red-500 bg-red-50 rounded-xl px-3 py-2">
+              {errors.api}
+            </p>
+          )}
+
+          {/* Name */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Nomi <span className="text-red-500">*</span>
+              {t("courses.form_name")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -237,18 +300,18 @@ export default function Courses() {
                 setForm((p) => ({ ...p, title: e.target.value }));
                 setErrors((p) => ({ ...p, title: "" }));
               }}
-              className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors
-                ${errors.title ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
+              className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors ${errors.title ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
             />
             {errors.title && (
               <p className="text-[11px] text-red-500 mt-1">{errors.title}</p>
             )}
           </div>
 
-          {/* Dars davomiyligi */}
+          {/* Lesson duration */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Dars davomiyligi <span className="text-red-500">*</span>
+              {t("courses.form_duration")}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <CustomSelect
               value={form.duration}
@@ -265,10 +328,10 @@ export default function Courses() {
             )}
           </div>
 
-          {/* Kurs davomiyligi */}
+          {/* Course period */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Kurs davomiyligi (oylarda) <span className="text-red-500">*</span>
+              {t("courses.form_period")} <span className="text-red-500">*</span>
             </label>
             <CustomSelect
               value={form.period}
@@ -285,10 +348,10 @@ export default function Courses() {
             )}
           </div>
 
-          {/* Narx */}
+          {/* Price */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Narx <span className="text-red-500">*</span>
+              {t("courses.form_price")} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -298,8 +361,7 @@ export default function Courses() {
                 setForm((p) => ({ ...p, price: e.target.value }));
                 setErrors((p) => ({ ...p, price: "" }));
               }}
-              className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors
-                ${errors.price ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
+              className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors ${errors.price ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
             />
             {errors.price && (
               <p className="text-[11px] text-red-500 mt-1">{errors.price}</p>
@@ -309,36 +371,33 @@ export default function Courses() {
           {/* Description */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Description
+              {t("courses.form_description")}
             </label>
             <textarea
               rows={4}
-              placeholder="A little about the company and the team that you'll be working with."
+              placeholder="A little about the course..."
               value={form.description}
               onChange={(e) =>
                 setForm((p) => ({ ...p, description: e.target.value }))
               }
               className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors resize-none"
             />
-            <p className="text-[11px] text-gray-400 mt-1">
-              This is a hint text to help user.
-            </p>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button
             onClick={closeDrawer}
             className="px-5 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
           >
-            Bekor qilish
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleSave}
-            className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors cursor-pointer"
+            disabled={saving}
+            className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl transition-colors cursor-pointer"
           >
-            Saqlash
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </div>

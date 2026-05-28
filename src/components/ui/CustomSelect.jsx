@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
-export default function CustomSelect({ value, onChange, options, placeholder, error }) {
+export default function CustomSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  error,
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 

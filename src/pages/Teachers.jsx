@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ArchiveIcon from "@mui/icons-material/Archive";
@@ -11,109 +11,64 @@ import CloseIcon from "@mui/icons-material/Close";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import EmailIcon from "@mui/icons-material/Email";
+import { teachersApi } from "../api/teachers";
+import { groupsApi } from "../api/groups";
+import { useLanguage } from "../contexts/LanguageContext";
 
-const TEACHERS_MOCK = [
-  {
-    id: 1,
-    name: "Mohirbek Toshmatov",
-    groups: ["N26", "n105", "B2"],
-    extra: 4,
-    phone: "+998901234567",
-    email: "mohirbek@gmail.com",
-    address: "Toshkent",
-    created: "12.05.2026",
-  },
-  {
-    id: 2,
-    name: "Sardor Rahimov",
-    groups: ["N12"],
+// ─── Backend response normalize ──────────────────────────────────────────────
+function normalizeList(res) {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res?.teachers)) return res.teachers;
+  return [];
+}
+
+function toUiTeacher(t) {
+  return {
+    id: t.id,
+    name: t.full_name ?? t.name ?? "—",
+    phone: t.phone ?? "—",
+    email: t.email ?? "—",
+    address: t.address ?? "—",
+    groups: Array.isArray(t.groups) ? t.groups.map((g) => g.name ?? g) : [],
     extra: 0,
-    phone: "+998907654321",
-    email: "sardor@gmail.com",
-    address: "Samarqand",
-    created: "05.02.2023",
-  },
-  {
-    id: 3,
-    name: "Dilnoza Yusupova",
-    groups: ["C3", "A1"],
-    extra: 0,
-    phone: "+998913334455",
-    email: "dilnoza@gmail.com",
-    address: "Buxoro",
-    created: "18.03.2023",
-  },
-  {
-    id: 4,
-    name: "Jasur Mirzayev",
-    groups: ["M7"],
-    extra: 0,
-    phone: "+998935556677",
-    email: "jasur@gmail.com",
-    address: "Namangan",
-    created: "22.04.2023",
-  },
-  {
-    id: 5,
-    name: "Kamola Nazarova",
-    groups: ["K9"],
-    extra: 0,
-    phone: "+998941112233",
-    email: "kamola@gmail.com",
-    address: "Andijon",
-    created: "01.05.2023",
-  },
-  {
-    id: 6,
-    name: "Otabek Xasanov",
-    groups: ["N26", "K9"],
-    extra: 0,
-    phone: "+998957778899",
-    email: "otabek@gmail.com",
-    address: "Toshkent",
-    created: "15.06.2023",
-  },
-  {
-    id: 7,
-    name: "Feruza Abdullayeva",
-    groups: ["B2"],
-    extra: 0,
-    phone: "+998919990011",
-    email: "feruza@gmail.com",
-    address: "Farg'ona",
-    created: "20.07.2023",
-  },
-  {
-    id: 8,
-    name: "Sherzod Qodirov",
-    groups: ["C3", "A1", "M7"],
-    extra: 1,
-    phone: "+998902221133",
-    email: "sherzod@gmail.com",
-    address: "Qarshi",
-    created: "08.08.2023",
-  },
-  {
-    id: 9,
-    name: "Nilufar Ergasheva",
-    groups: ["n105", "N12"],
-    extra: 0,
-    phone: "+998968884455",
-    email: "nilufar@gmail.com",
-    address: "Nukus",
-    created: "14.09.2023",
-  },
-  {
-    id: 10,
-    name: "Bobur Usmonov",
-    groups: ["N26", "B2", "K9"],
-    extra: 0,
-    phone: "+998977776655",
-    email: "bobur@gmail.com",
-    address: "Jizzax",
-    created: "30.10.2023",
-  },
-];
+    created: t.created_at
+      ? new Date(t.created_at).toLocaleDateString("uz-UZ")
+      : "—",
+  };
+}
+
+function toApiBody(form, groups) {
+  const genderMap = { Erkak: "male", Ayol: "female" };
+  return {
+    phone: form.phone,
+    email: form.email,
+    full_name: form.fio,
+    birthday: form.birthDate,
+    gender: genderMap[form.gender] ?? form.gender,
+    address: form.address,
+    password: form.password,
+    groups: groups.map((g) => g.id),
+  };
+}
+
+const ITEMS_PER_PAGE = 10;
+
+function getPageNumbers(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [1];
+  if (current > 3) pages.push("...");
+  for (
+    let i = Math.max(2, current - 1);
+    i <= Math.min(total - 1, current + 1);
+    i++
+  ) {
+    pages.push(i);
+  }
+  if (current < total - 2) pages.push("...");
+  if (total > 1) pages.push(total);
+  return pages;
+}
 
 const EMPTY_FORM = {
   phone: "+998",
@@ -124,15 +79,22 @@ const EMPTY_FORM = {
   address: "",
   photo: null,
   password: "",
-  showPassword: false,
 };
 
-const AVAILABLE_GROUPS = ["N26", "n105", "N12", "B2", "C3", "A1", "M7", "K9"];
-
 export default function Teachers() {
-  const [teachers, setTeachers] = useState(TEACHERS_MOCK);
+  const { t } = useLanguage();
+
+  const [teachers, setTeachers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const [availableGroups, setAvailableGroups] = useState([]);
+
+  const [showArchive, setShowArchive] = useState(false);
   const [selected, setSelected] = useState([]);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [groups, setGroups] = useState([]);
@@ -142,20 +104,78 @@ export default function Teachers() {
   const [groupModalSearch, setGroupModalSearch] = useState("");
   const [tempGroupModal, setTempGroupModal] = useState([]);
 
-  const allChecked = selected.length === teachers.length;
-  function toggleAll() {
-    setSelected(allChecked ? [] : teachers.map((t) => t.id));
-  }
-  function toggleOne(id) {
+  // ── GET /api/v1/teachers ─────────────────────────────────────────────────
+  const loadTeachers = useCallback(async () => {
+    setLoading(true);
+    setApiError("");
+    setShowArchive(false);
+    setCurrentPage(1);
+    try {
+      const res = await teachersApi.getAll();
+      setTeachers(normalizeList(res).map(toUiTeacher));
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ── GET /api/v1/teachers/archive ─────────────────────────────────────────
+  const loadArchive = useCallback(async () => {
+    setLoading(true);
+    setApiError("");
+    setShowArchive(true);
+    setCurrentPage(1);
+    setSelected([]);
+    try {
+      const res = await teachersApi.getArchive();
+      setTeachers(normalizeList(res).map(toUiTeacher));
+    } catch (err) {
+      setApiError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTeachers();
+    groupsApi
+      .getAll()
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.groups ?? []);
+        setAvailableGroups(list);
+      })
+      .catch(() => {});
+  }, [loadTeachers]);
+
+  // ── Checkbox ─────────────────────────────────────────────────────────────
+  const allChecked = teachers.length > 0 && selected.length === teachers.length;
+  const toggleAll = () =>
+    setSelected(allChecked ? [] : teachers.map((tc) => tc.id));
+  const toggleOne = (id) =>
     setSelected((p) =>
       p.includes(id) ? p.filter((x) => x !== id) : [...p, id],
     );
-  }
 
-  const filtered = teachers.filter((t) =>
-    t.name.toLowerCase().includes(search.toLowerCase()),
+  const filtered = teachers.filter((tc) =>
+    tc.name.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginated = filtered.slice(
+    (safePage - 1) * ITEMS_PER_PAGE,
+    safePage * ITEMS_PER_PAGE,
+  );
+
+  function handleSearch(val) {
+    setSearch(val);
+    setCurrentPage(1);
+  }
+
+  // ── Drawer ───────────────────────────────────────────────────────────────
   function openDrawer() {
     setForm(EMPTY_FORM);
     setGroups([]);
@@ -177,7 +197,6 @@ export default function Teachers() {
   function removeGroup(i) {
     setGroups((p) => p.filter((_, idx) => idx !== i));
   }
-
   function openGroupModal() {
     setTempGroupModal([...groups]);
     setGroupModalSearch("");
@@ -191,40 +210,41 @@ export default function Teachers() {
   function validate() {
     const e = {};
     if (!form.phone.trim() || form.phone === "+998")
-      e.phone = "Telefon kiritilishi shart";
-    if (!form.fio.trim()) e.fio = "FIO kiritilishi shart";
-    if (!form.gender) e.gender = "Jinsni tanlang";
+      e.phone = t("common.phone") + " " + t("common.not_found");
+    if (!form.fio.trim()) e.fio = t("teachers.form_fio");
+    if (!form.gender) e.gender = t("common.gender");
+    if (!form.password.trim()) e.password = t("common.password");
     return e;
   }
 
-  function handleSave() {
+  // ── POST /api/v1/teachers ────────────────────────────────────────────────
+  async function handleSave() {
     const e = validate();
     if (Object.keys(e).length) {
       setErrors(e);
       return;
     }
-    const today = new Date().toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-    setTeachers((p) => [
-      ...p,
-      {
-        id: Date.now(),
-        name: form.fio,
-        groups,
-        extra: 0,
-        phone: form.phone,
-        birth: form.birthDate,
-        created: today,
-      },
-    ]);
-    closeDrawer();
+    setSaving(true);
+    try {
+      await teachersApi.create(toApiBody(form, groups));
+      closeDrawer();
+      await loadTeachers();
+    } catch (err) {
+      setErrors({ api: err.message });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id) {
-    setTeachers((p) => p.filter((t) => t.id !== id));
+  // ── DELETE /api/v1/teachers/{id} ─────────────────────────────────────────
+  async function handleDelete(id) {
+    try {
+      await teachersApi.remove(id);
+      setTeachers((p) => p.filter((tc) => tc.id !== id));
+      setSelected((p) => p.filter((x) => x !== id));
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   const inputCls = (err) =>
@@ -236,50 +256,75 @@ export default function Teachers() {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-800 mb-1">
-            O'qituvchilar
+            {showArchive ? t("teachers.archive_title") : t("teachers.title")}
           </h1>
           <p className="text-sm text-gray-400 max-w-2xl">
-            Ushbu sahifada siz o'qituvchilar ro'yxatini va ularning
-            ma'lumotlarini topasiz.
+            {t("teachers.description")}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-            <IosShareIcon sx={{ fontSize: 16 }} /> Export
-          </button>
-          <button
-            onClick={openDrawer}
-            className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
-          >
-            <span className="text-base leading-none">+</span> O'qituvchi
-            qo'shish
-          </button>
+          {showArchive ? (
+            <button
+              onClick={loadTeachers}
+              className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+            >
+              {t("common.back")}
+            </button>
+          ) : (
+            <>
+              <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
+                <IosShareIcon sx={{ fontSize: 16 }} /> {t("common.export")}
+              </button>
+              <button
+                onClick={openDrawer}
+                className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+              >
+                <span className="text-base leading-none">+</span>{" "}
+                {t("teachers.add")}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
       {/* Table card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* Card header: filters + search */}
+        {/* Card header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-            <FilterListIcon sx={{ fontSize: 17 }} /> Filters
+            <FilterListIcon sx={{ fontSize: 17 }} /> {t("common.filters")}
           </button>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-2 w-52 hover:border-violet-300 transition-colors">
               <SearchIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder={t("common.search")}
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 className="text-[13px] text-gray-600 placeholder-gray-400 outline-none bg-transparent w-full"
               />
             </div>
-            <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-3 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-              <ArchiveIcon sx={{ fontSize: 16 }} /> Arxiv
+            <button
+              onClick={showArchive ? loadTeachers : loadArchive}
+              className={`flex items-center gap-1.5 border rounded-xl px-3 py-2 text-[13px] transition-colors cursor-pointer
+                ${
+                  showArchive
+                    ? "border-violet-300 text-violet-600 bg-violet-50"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              <ArchiveIcon sx={{ fontSize: 16 }} /> {t("common.archive")}
             </button>
           </div>
         </div>
+
+        {/* API error */}
+        {apiError && (
+          <div className="px-5 py-3 bg-red-50 text-red-600 text-[13px] border-b border-red-100">
+            {apiError}
+          </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[800px]">
@@ -295,96 +340,127 @@ export default function Teachers() {
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
                   <span className="flex items-center gap-1 cursor-pointer select-none">
-                    Nomi <ArrowDownwardIcon sx={{ fontSize: 13 }} />
+                    {t("teachers.col_name")}{" "}
+                    <ArrowDownwardIcon sx={{ fontSize: 13 }} />
                   </span>
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  Guruh
+                  {t("teachers.col_group")}
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  Telefon raqamlari
+                  {t("teachers.col_phone")}
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  Email
+                  {t("teachers.col_email")}
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  Manzil
+                  {t("teachers.col_address")}
                 </th>
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  Yaratilgan sana
+                  {t("teachers.col_created")}
                 </th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t) => (
-                <tr
-                  key={t.id}
-                  className={`border-b border-gray-50 transition-colors ${selected.includes(t.id) ? "bg-violet-50" : "hover:bg-gray-50"}`}
-                >
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(t.id)}
-                      onChange={() => toggleOne(t.id)}
-                      className="w-4 h-4 accent-violet-600 cursor-pointer"
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-blue-400 shrink-0" />
-                      <span className="text-[13px] font-semibold text-gray-800">
-                        {t.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {t.groups.map((g, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500"
-                        >
-                          {g}
-                        </span>
-                      ))}
-                      {t.extra > 0 && (
-                        <span className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500">
-                          +{t.extra}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {t.phone}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {t.email}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {t.address}
-                  </td>
-                  <td className="px-4 py-3 text-[13px] text-gray-600">
-                    {t.created}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                        <VisibilityIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
-                      >
-                        <DeleteIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-                      </button>
-                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
-                        <EditIcon sx={{ fontSize: 15, color: "#9CA3AF" }} />
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-10 text-center text-[13px] text-gray-400"
+                  >
+                    {t("common.loading")}
                   </td>
                 </tr>
-              ))}
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={8}
+                    className="px-4 py-10 text-center text-[13px] text-gray-400"
+                  >
+                    {t("teachers.empty")}
+                  </td>
+                </tr>
+              ) : (
+                paginated.map((tc) => (
+                  <tr
+                    key={tc.id}
+                    className={`border-b border-gray-50 transition-colors ${selected.includes(tc.id) ? "bg-violet-50" : "hover:bg-gray-50"}`}
+                  >
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(tc.id)}
+                        onChange={() => toggleOne(tc.id)}
+                        className="w-4 h-4 accent-violet-600 cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-blue-400 shrink-0" />
+                        <span className="text-[13px] font-semibold text-gray-800">
+                          {tc.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {tc.groups.slice(0, 3).map((g, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500"
+                          >
+                            {typeof g === "object" ? (g.name ?? "") : g}
+                          </span>
+                        ))}
+                        {tc.groups.length > 3 && (
+                          <span className="px-2 py-0.5 border border-gray-200 rounded text-[11px] text-gray-500">
+                            +{tc.groups.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {tc.phone}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {tc.email}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {tc.address}
+                    </td>
+                    <td className="px-4 py-3 text-[13px] text-gray-600">
+                      {tc.created}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1">
+                        <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                          <VisibilityIcon
+                            sx={{ fontSize: 16, color: "#9CA3AF" }}
+                          />
+                        </button>
+                        {!showArchive && (
+                          <>
+                            <button
+                              onClick={() => handleDelete(tc.id)}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 cursor-pointer transition-colors"
+                            >
+                              <DeleteIcon
+                                sx={{ fontSize: 16, color: "#9CA3AF" }}
+                              />
+                            </button>
+                            <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
+                              <EditIcon
+                                sx={{ fontSize: 15, color: "#9CA3AF" }}
+                              />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -392,21 +468,37 @@ export default function Teachers() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between mt-4 flex-wrap gap-2">
-        <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-          ← Previous
+        <button
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          disabled={safePage === 1}
+          className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {t("common.previous")}
         </button>
         <div className="flex items-center gap-1">
-          {[1, 2, 3, "...", 8, 9, 10].map((p, i) => (
+          {getPageNumbers(safePage, totalPages).map((p, i) => (
             <button
               key={i}
-              className={`w-8 h-8 rounded-lg text-[13px] font-medium transition-colors cursor-pointer ${p === 1 ? "bg-violet-600 text-white" : p === "..." ? "text-gray-400 cursor-default" : "text-gray-600 hover:bg-gray-100"}`}
+              onClick={() => typeof p === "number" && setCurrentPage(p)}
+              className={`w-8 h-8 rounded-lg text-[13px] font-medium transition-colors
+                ${
+                  p === safePage
+                    ? "bg-violet-600 text-white cursor-pointer"
+                    : p === "..."
+                      ? "text-gray-400 cursor-default"
+                      : "text-gray-600 hover:bg-gray-100 cursor-pointer"
+                }`}
             >
               {p}
             </button>
           ))}
         </div>
-        <button className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer">
-          Next →
+        <button
+          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          disabled={safePage === totalPages}
+          className="flex items-center gap-1.5 border border-gray-200 rounded-xl px-4 py-2 text-[13px] text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {t("common.next")}
         </button>
       </div>
 
@@ -425,11 +517,10 @@ export default function Teachers() {
         className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-500 ease-in-out"
         style={{ transform: drawerOpen ? "translateX(0)" : "translateX(100%)" }}
       >
-        {/* Drawer header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[16px] font-bold text-gray-800">
-              O'qituvchi qo'shish
+              {t("teachers.drawer_add")}
             </span>
             <button
               onClick={closeDrawer}
@@ -439,16 +530,21 @@ export default function Teachers() {
             </button>
           </div>
           <p className="text-[12px] text-gray-400">
-            Bu yerda siz yangi o'qituvchi qo'shishingiz mumkin.
+            {t("teachers.drawer_desc")}
           </p>
         </div>
 
-        {/* Form */}
         <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
-          {/* Telefon */}
+          {errors.api && (
+            <p className="text-[12px] text-red-500 bg-red-50 rounded-xl px-3 py-2">
+              {errors.api}
+            </p>
+          )}
+
+          {/* Phone */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Telefon raqam
+              {t("common.phone")}
             </label>
             <input
               type="text"
@@ -464,10 +560,10 @@ export default function Teachers() {
             )}
           </div>
 
-          {/* Mail */}
+          {/* Email */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Mail
+              {t("common.email")}
             </label>
             <div
               className={`flex items-center gap-2 border rounded-xl px-3 py-2.5 ${errors.email ? "border-red-400" : "border-gray-200 focus-within:border-violet-400"} transition-colors`}
@@ -488,7 +584,7 @@ export default function Teachers() {
           {/* FIO */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              O'qituvchi FIO
+              {t("teachers.form_fio")}
             </label>
             <input
               type="text"
@@ -505,10 +601,10 @@ export default function Teachers() {
             )}
           </div>
 
-          {/* Tug'ilgan sanasi */}
+          {/* Birth date */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Tug'ilgan sanasi
+              {t("common.birth_date")}
             </label>
             <div className="flex items-center gap-2 border border-gray-200 focus-within:border-violet-400 rounded-xl px-3 py-2.5 transition-colors">
               <CalendarTodayIcon sx={{ fontSize: 15, color: "#9CA3AF" }} />
@@ -523,20 +619,20 @@ export default function Teachers() {
             </div>
           </div>
 
-          {/* Guruh */}
+          {/* Group */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Guruh
+              {t("teachers.col_group")}
             </label>
             <div className="border border-gray-200 rounded-xl px-3 py-2.5 min-h-11">
               {groups.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {groups.map((g, i) => (
                     <span
-                      key={i}
+                      key={g.id ?? i}
                       className="flex items-center gap-1 bg-violet-50 text-violet-700 text-[12px] px-2 py-0.5 rounded-lg"
                     >
-                      {g}
+                      {g.name}
                       <button
                         onClick={() => removeGroup(i)}
                         className="text-violet-400 hover:text-red-500 cursor-pointer leading-none"
@@ -551,15 +647,15 @@ export default function Teachers() {
                 onClick={openGroupModal}
                 className="flex items-center gap-1 text-violet-600 text-[13px] font-semibold cursor-pointer hover:underline"
               >
-                + Qo'shish
+                + {t("common.add")}
               </button>
             </div>
           </div>
 
-          {/* Jinsi */}
+          {/* Gender */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-2">
-              Jinsi
+              {t("common.gender")}
             </label>
             <div className="flex gap-5">
               {["Erkak", "Ayol"].map((g) => (
@@ -578,7 +674,9 @@ export default function Teachers() {
                     }}
                     className="accent-violet-600"
                   />
-                  <span className="text-[13px] text-gray-700">{g}</span>
+                  <span className="text-[13px] text-gray-700">
+                    {g === "Erkak" ? t("common.male") : t("common.female")}
+                  </span>
                 </label>
               ))}
             </div>
@@ -587,10 +685,10 @@ export default function Teachers() {
             )}
           </div>
 
-          {/* Surati */}
+          {/* Photo */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Surati
+              {t("common.photo")}
             </label>
             <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl py-6 cursor-pointer hover:border-violet-400 transition-colors">
               {photoPreview ? (
@@ -609,7 +707,7 @@ export default function Teachers() {
                     <span className="text-gray-400"> or drag and drop</span>
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    JPG or PNG (max. 800x800px)
+                    {t("common.upload_size")}
                   </p>
                 </>
               )}
@@ -622,10 +720,10 @@ export default function Teachers() {
             </label>
           </div>
 
-          {/* Manzil */}
+          {/* Address */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Manzil
+              {t("common.address")}
             </label>
             <input
               type="text"
@@ -638,41 +736,45 @@ export default function Teachers() {
             />
           </div>
 
-          {/* Parol */}
+          {/* Password */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
-              Parol
+              {t("common.password")}
             </label>
             <input
               type="password"
               placeholder="Parolni kiriting"
               value={form.password}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, password: e.target.value }))
-              }
-              className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors"
+              onChange={(e) => {
+                setForm((p) => ({ ...p, password: e.target.value }));
+                setErrors((p) => ({ ...p, password: "" }));
+              }}
+              className={inputCls(errors.password)}
             />
+            {errors.password && (
+              <p className="text-[11px] text-red-500 mt-1">{errors.password}</p>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
           <button
             onClick={closeDrawer}
             className="px-4 py-2 text-[13px] font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer"
           >
-            Bekor qilish
+            {t("common.cancel")}
           </button>
           <button
             onClick={handleSave}
-            className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors cursor-pointer"
+            disabled={saving}
+            className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl transition-colors cursor-pointer"
           >
-            Saqlash
+            {saving ? t("common.saving") : t("common.save")}
           </button>
         </div>
       </div>
 
-      {/* Guruh tanlash modali */}
+      {/* Group modal */}
       {groupModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center">
           <div
@@ -680,14 +782,13 @@ export default function Teachers() {
             onClick={() => setGroupModalOpen(false)}
           />
           <div className="relative bg-white rounded-2xl shadow-2xl w-80 flex flex-col z-10">
-            {/* Header */}
             <div className="flex items-start justify-between px-5 pt-5 pb-3">
               <div>
                 <p className="text-[15px] font-bold text-gray-800">
-                  Guruhga biriktirish
+                  {t("teachers.modal_title")}
                 </p>
                 <p className="text-[12px] text-gray-400 mt-0.5">
-                  Bir yoki bir nechta guruhni tanlang
+                  {t("teachers.modal_desc")}
                 </p>
               </div>
               <button
@@ -697,57 +798,62 @@ export default function Teachers() {
                 <CloseIcon sx={{ fontSize: 17, color: "#6B7280" }} />
               </button>
             </div>
-
-            {/* Search */}
             <div className="px-5 pb-3">
               <input
                 type="text"
-                placeholder="Guruh qidirish..."
+                placeholder={t("teachers.group_search")}
                 value={groupModalSearch}
                 onChange={(e) => setGroupModalSearch(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-[13px] outline-none focus:border-violet-400 transition-colors"
               />
             </div>
-
-            {/* List */}
             <div className="px-5 pb-3 flex flex-col gap-1 max-h-52 overflow-y-auto">
-              {AVAILABLE_GROUPS.filter((g) =>
-                g.toLowerCase().includes(groupModalSearch.toLowerCase()),
-              ).map((g, i) => (
-                <label
-                  key={i}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
-                >
-                  <input
-                    type="checkbox"
-                    checked={tempGroupModal.includes(g)}
-                    onChange={() =>
-                      setTempGroupModal((p) =>
-                        p.includes(g) ? p.filter((x) => x !== g) : [...p, g],
-                      )
-                    }
-                    className="w-4 h-4 accent-violet-600 cursor-pointer"
-                  />
-                  <span className="text-[13px] font-medium text-gray-700">
-                    {g}
-                  </span>
-                </label>
-              ))}
+              {availableGroups
+                .filter((g) =>
+                  (g.name ?? "")
+                    .toLowerCase()
+                    .includes(groupModalSearch.toLowerCase()),
+                )
+                .map((g) => (
+                  <label
+                    key={g.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 cursor-pointer border border-gray-100 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={tempGroupModal.some((x) => x.id === g.id)}
+                      onChange={() =>
+                        setTempGroupModal((p) =>
+                          p.some((x) => x.id === g.id)
+                            ? p.filter((x) => x.id !== g.id)
+                            : [...p, g],
+                        )
+                      }
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
+                    />
+                    <span className="text-[13px] font-medium text-gray-700">
+                      {g.name}
+                    </span>
+                  </label>
+                ))}
+              {availableGroups.length === 0 && (
+                <p className="text-[12px] text-gray-400 text-center py-3">
+                  {t("teachers.no_groups")}
+                </p>
+              )}
             </div>
-
-            {/* Footer */}
             <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">
               <button
                 onClick={() => setGroupModalOpen(false)}
                 className="px-4 py-2 text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-100 rounded-xl cursor-pointer transition-colors"
               >
-                Bekor qilish
+                {t("common.cancel")}
               </button>
               <button
                 onClick={confirmGroupModal}
                 className="px-5 py-2 text-[13px] font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded-xl cursor-pointer transition-colors"
               >
-                Qo'shish
+                {t("common.add")}
               </button>
             </div>
           </div>
