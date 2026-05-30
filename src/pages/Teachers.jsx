@@ -30,6 +30,7 @@ function toUiTeacher(t) {
     phone: t.phone ?? "—",
     email: t.email ?? "—",
     address: t.address ?? "—",
+    photo: t.image ?? t.photo ?? t.avatar ?? t.profile_image ?? null,
     groups: Array.isArray(t.groups) ? t.groups.map((g) => g.name ?? g) : [],
     extra: 0,
     created: t.created_at
@@ -397,7 +398,19 @@ export default function Teachers() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-blue-400 shrink-0" />
+                        {tc.photo ? (
+                          <img
+                            src={tc.photo}
+                            alt={tc.name}
+                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-linear-to-br from-violet-400 to-blue-400 flex items-center justify-center shrink-0">
+                            <span className="text-white text-[12px] font-semibold uppercase">
+                              {tc.name[0]}
+                            </span>
+                          </div>
+                        )}
                         <span className="text-[13px] font-semibold text-gray-800">
                           {tc.name}
                         </span>
