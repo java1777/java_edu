@@ -8,151 +8,116 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { groupsApi } from "../api/groups";
 import { useLanguage } from "../contexts/LanguageContext";
 
+function getTeacherPhoto(tc) {
+  return tc?.image ?? tc?.photo ?? tc?.avatar ?? tc?.profile_image ?? null;
+}
+
 const DAY_ABBR = {
-  monday: "Du",
-  tuesday: "Se",
-  wednesday: "Ch",
-  thursday: "Pa",
-  friday: "Ju",
-  saturday: "Sh",
-  sunday: "Ya",
+  monday: "Du", tuesday: "Se", wednesday: "Ch",
+  thursday: "Pa", friday: "Ju", saturday: "Sh", sunday: "Ya",
 };
-const DAY_NUM = {
-  monday: 1,
-  tuesday: 2,
-  wednesday: 3,
-  thursday: 4,
-  friday: 5,
-  saturday: 6,
-  sunday: 0,
+
+const MONTH_MAP = {
+  January: 0, February: 1, March: 2, April: 3,
+  May: 4, June: 5, July: 6, August: 7,
+  September: 8, October: 9, November: 10, December: 11,
 };
+
+const MONTH_NAMES_UZ = [
+  "Yan", "Fev", "Mar", "Apr", "May", "Iyun",
+  "Iyul", "Avg", "Sen", "Okt", "Noy", "Dek",
+];
+
+const MONTH_NAMES_FULL = [
+  "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+  "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr",
+];
 
 function formatDate(str) {
   if (!str) return "—";
   const d = new Date(str);
-  const months = [
-    "Yan",
-    "Fev",
-    "Mar",
-    "Apr",
-    "May",
-    "Iyun",
-    "Iyul",
-    "Avg",
-    "Sen",
-    "Okt",
-    "Noy",
-    "Dek",
-  ];
-  return `${d.getDate()} ${months[d.getMonth()]}, ${d.getFullYear()}`;
+  return `${d.getDate()} ${MONTH_NAMES_UZ[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
-function getLessonDates(schedule, year, month) {
-  if (!schedule?.start_date) return [];
-  const weekDays = (schedule.week_day ?? []).map((d) =>
-    typeof d === "string" ? (DAY_NUM[d.toLowerCase()] ?? -1) : d,
-  );
-  const start = new Date(schedule.start_date);
-  const end = schedule.end_date
-    ? new Date(schedule.end_date)
-    : new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
-  const dates = [];
-  const cur = new Date(year, month, 1);
-  while (cur.getMonth() === month) {
-    if (weekDays.includes(cur.getDay()) && cur >= start && cur <= end) {
-      dates.push(cur.getDate());
-    }
-    cur.setDate(cur.getDate() + 1);
-  }
-  return dates;
-}
-
-const MONTH_NAMES = [
-  "Yanvar",
-  "Fevral",
-  "Mart",
-  "Aprel",
-  "May",
-  "Iyun",
-  "Iyul",
-  "Avgust",
-  "Sentabr",
-  "Oktabr",
-  "Noyabr",
-  "Dekabr",
-];
-
-function ScheduleCalendar({ schedule }) {
+// Kalendar - schedules API dan kelgan { day, month, isCompleted } formatini ishlatadi
+function LessonCalendar({ lessonDays, groupId }) {
   const { t } = useLanguage();
-  const startDate = schedule?.start_date
-    ? new Date(schedule.start_date)
-    : new Date();
-  const [year, setYear] = useState(startDate.getFullYear());
-  const [month, setMonth] = useState(startDate.getMonth());
-  const [studyMonth, setStudyMonth] = useState(1);
+  const navigate = useNavigate();
   const today = new Date();
 
-  const lessonDates = getLessonDates(schedule, year, month);
+  // Barcha oylarni topamiz
+  const months = [...new Set(lessonDays.map((d) => d.month))];
+  const [activeMonth, setActiveMonth] = useState(months[0] ?? null);
+  const [studyMonth, setStudyMonth] = useState(1);
+
+  const filtered = lessonDays.filter((d) => d.month === activeMonth);
+  const monthIdx = MONTH_MAP[activeMonth] ?? 0;
 
   function prev() {
-    if (month === 0) {
-      setYear((y) => y - 1);
-      setMonth(11);
-    } else setMonth((m) => m - 1);
-    setStudyMonth((m) => Math.max(1, m - 1));
+    const idx = months.indexOf(activeMonth);
+    if (idx > 0) {
+      setActiveMonth(months[idx - 1]);
+      setStudyMonth((m) => Math.max(1, m - 1));
+    }
   }
   function next() {
-    if (month === 11) {
-      setYear((y) => y + 1);
-      setMonth(0);
-    } else setMonth((m) => m + 1);
-    setStudyMonth((m) => m + 1);
+    const idx = months.indexOf(activeMonth);
+    if (idx < months.length - 1) {
+      setActiveMonth(months[idx + 1]);
+      setStudyMonth((m) => m + 1);
+    }
   }
 
-  const monthLabel = MONTH_NAMES[month].slice(0, 3);
+  if (!lessonDays.length) {
+    return <p className="text-[13px] text-gray-400">{t("gd.no_lessons")}</p>;
+  }
 
   return (
     <div className="mt-6">
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={prev}
-          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200"
+          disabled={months.indexOf(activeMonth) === 0}
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200 disabled:opacity-40"
         >
           <ChevronLeftIcon sx={{ fontSize: 16, color: "#6B7280" }} />
         </button>
         <span className="text-[13px] font-semibold text-gray-700">
-          {studyMonth}
-          {t("gd.study_month")}
+          {studyMonth}{t("gd.study_month")}
         </span>
         <button
           onClick={next}
-          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200"
+          disabled={months.indexOf(activeMonth) === months.length - 1}
+          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200 disabled:opacity-40"
         >
           <ChevronRightIcon sx={{ fontSize: 16, color: "#6B7280" }} />
         </button>
       </div>
 
-      {lessonDates.length === 0 ? (
+      {filtered.length === 0 ? (
         <p className="text-[13px] text-gray-400">{t("gd.no_lessons")}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {lessonDates.map((date) => {
-            const isPast = new Date(year, month, date) < today;
+          {filtered.map((entry, i) => {
+            const entryDate = new Date(today.getFullYear(), monthIdx, entry.day);
+            const isPast = entryDate < today || entry.isCompleted;
+            const yyyy = today.getFullYear();
+            const mm = String(monthIdx + 1).padStart(2, "0");
+            const dd = String(entry.day).padStart(2, "0");
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
             return (
               <div
-                key={date}
-                className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border transition-colors
-                  ${isPast ? "border-gray-200 bg-gray-50" : "border-gray-300 bg-white shadow-sm"}`}
+                key={i}
+                onClick={() => navigate(`/dashboard/groups/${groupId}/lesson/${dateStr}`)}
+                className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border transition-colors cursor-pointer
+                  ${isPast ? "border-gray-200 bg-gray-50 hover:border-violet-300" : "border-gray-300 bg-white shadow-sm hover:border-violet-400 hover:shadow-md"}`}
               >
-                <span
-                  className={`text-[10px] font-medium ${isPast ? "text-gray-300" : "text-gray-400"}`}
-                >
-                  {monthLabel}
+                <span className={`text-[10px] font-medium ${isPast ? "text-gray-300" : "text-gray-400"}`}>
+                  {MONTH_NAMES_FULL[monthIdx]?.slice(0, 3)}
                 </span>
-                <span
-                  className={`text-[15px] font-bold ${isPast ? "text-gray-300" : "text-gray-800"}`}
-                >
-                  {date}
+                <span className={`text-[15px] font-bold ${isPast ? "text-gray-300" : "text-gray-800"}`}>
+                  {entry.day}
                 </span>
               </div>
             );
@@ -176,7 +141,9 @@ export default function GroupDetail() {
 
   const [activeTab, setActiveTab] = useState(0);
   const [group, setGroup] = useState(null);
-  const [schedules, setSchedules] = useState([]);
+  const [groupOne, setGroupOne] = useState(null); // /groups/one/{id} dan keladi
+  const [teachers, setTeachers] = useState([]);
+  const [lessonDays, setLessonDays] = useState([]); // kalendar uchun
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
@@ -189,13 +156,35 @@ export default function GroupDetail() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
+      groupsApi.getById(id).catch(() => null),
       groupsApi.getOne(id).catch(() => null),
-      groupsApi.getSchedules(id).catch(() => []),
+      groupsApi.getSchedules(id).catch(() => null),
     ])
-      .then(([g, s]) => {
+      .then(([byId, one, schedRaw]) => {
+        // /groups/{id} → teachers, averageAge, room_capacity, course, student_count
+        const g = byId?.data ?? byId;
         setGroup(g);
-        const list = Array.isArray(s) ? s : (s?.data ?? s?.schedules ?? []);
-        setSchedules(list);
+        setTeachers(Array.isArray(g?.teachers) ? g.teachers : []);
+
+        // /groups/one/{id} → start_time, end_time, week_day, room, start_date, end_date
+        const g1 = one?.data ?? one;
+        setGroupOne(g1);
+
+        // /groups/{id}/schedules → { 1: {isActive, days}, 2: {...}, ... }
+        const schedList = Array.isArray(schedRaw)
+          ? schedRaw
+          : Array.isArray(schedRaw?.data)
+            ? schedRaw.data
+            : [];
+
+        if (schedList.length > 0) {
+          const sched = schedList[0];
+          // isActive: true bo'lgan entrydan yoki birinchisidan kunlarni olamiz
+          const entries = Object.values(sched);
+          const activeEntry = entries.find((e) => e?.isActive) ?? entries[0];
+          const days = Array.isArray(activeEntry?.days) ? activeEntry.days : [];
+          setLessonDays(days);
+        }
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -222,21 +211,51 @@ export default function GroupDetail() {
     );
   }
 
-  const teachers = Array.isArray(group.teachers) ? group.teachers : [];
-  const course = group.course ?? {};
-  const room = group.room ?? {};
+  // --- Params ---
+  const course = typeof group.course === "object" && group.course ? group.course : {};
+  const courseName =
+    (typeof group.course === "string" ? group.course : null) ??
+    course.name ?? groupOne?.course?.name ?? "—";
+  const avgAge = group.averageAge ?? group.avg_age ?? "—";
+  const capacity = group.room_capacity ?? groupOne?.room?.capacity ?? "—";
+  const studentCount = group.student_count ?? "—";
+  const lessonsPerMonth = group.lessons_per_month ?? groupOne?.lessons_per_month ?? "—";
+  const courseDuration = course.duration_month ?? groupOne?.course?.duration_month ?? "—";
+  const totalLessons = group.total_lessons ?? groupOne?.total_lessons ?? "—";
 
   const params = [
-    [t("gd.param_course"), course.name ?? "—"],
-    [t("gd.param_avg_age"), group.avg_age ?? "—"],
-    [t("gd.param_capacity"), room.capacity ?? "—"],
-    [t("gd.param_students"), group.student_count ?? "—"],
-    [t("gd.param_lessons_month"), group.lessons_per_month ?? "—"],
-    [t("gd.param_duration"), course.duration_month ?? "—"],
-    [t("gd.param_total_lessons"), group.total_lessons ?? "—"],
+    [t("gd.param_course"), courseName],
+    [t("gd.param_avg_age"), avgAge],
+    [t("gd.param_capacity"), capacity],
+    [t("gd.param_students"), studentCount],
+    [t("gd.param_lessons_month"), lessonsPerMonth],
+    [t("gd.param_duration"), courseDuration],
+    [t("gd.param_total_lessons"), totalLessons],
   ];
 
-  const visibleSchedules = showAll ? schedules : schedules.slice(0, 2);
+  // --- Schedule table ---
+  // groupOne dan: week_day, start_time, end_time, room, start_date, end_date
+  const weekDays = (Array.isArray(groupOne?.week_day) ? groupOne.week_day : [])
+    .map((d) => DAY_ABBR[d?.toLowerCase()] ?? d)
+    .join("/");
+  const timeRange =
+    groupOne?.start_time && groupOne?.end_time
+      ? `${groupOne.start_time} dan - ${groupOne.end_time} gacha`
+      : groupOne?.start_time ?? "—";
+  const dateRange =
+    groupOne?.start_date
+      ? `${formatDate(groupOne.start_date)} - ${formatDate(groupOne.end_date)}`
+      : "—";
+  const roomDisplay = (() => {
+    const rName =
+      typeof groupOne?.room === "string"
+        ? groupOne.room
+        : groupOne?.room?.name ?? "—";
+    const rCap = groupOne?.room?.capacity ?? group.room_capacity ?? "";
+    return rCap ? `${rName} // ${rCap}` : rName;
+  })();
+
+  const visibleTeachers = showAll ? teachers : teachers.slice(0, 2);
 
   return (
     <>
@@ -250,12 +269,16 @@ export default function GroupDetail() {
             <ArrowBackIcon sx={{ fontSize: 20, color: "#374151" }} />
           </button>
           <h1 className="text-xl font-extrabold text-gray-800">
-            {group.name ?? "—"}
+            {group.name ?? groupOne?.name ?? "—"}
           </h1>
           <span
-            className={`px-2.5 py-0.5 rounded-full text-[12px] font-semibold ${group.active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}
+            className={`px-2.5 py-0.5 rounded-full text-[12px] font-semibold ${
+              group.active ?? groupOne?.active
+                ? "bg-green-100 text-green-600"
+                : "bg-gray-100 text-gray-500"
+            }`}
           >
-            {group.active
+            {(group.active ?? groupOne?.active)
               ? t("common.active_label")
               : t("common.inactive_label")}
           </span>
@@ -295,33 +318,26 @@ export default function GroupDetail() {
               </div>
               <div className="p-6 flex flex-wrap gap-6 justify-center">
                 {teachers.length > 0 ? (
-                  teachers.map((tc, i) => (
-                    <div key={i} className="flex flex-col items-center gap-2">
-                      {tc.image ? (
-                        <img
-                          src={tc.image}
-                          alt={tc.full_name}
-                          className="w-16 h-16 rounded-full object-cover shadow"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-400 to-blue-400 flex items-center justify-center shadow">
-                          <span className="text-white text-xl font-bold">
-                            {(tc.full_name ?? tc.name ?? "T")[0]}
-                          </span>
-                        </div>
-                      )}
-                      <span className="text-violet-600 text-[12px] font-medium">
-                        Teacher
-                      </span>
-                      <span className="font-bold text-gray-800 text-[13px]">
-                        {tc.full_name ?? tc.name}
-                      </span>
-                    </div>
-                  ))
+                  teachers.map((tc, i) => {
+                    const photoUrl = getTeacherPhoto(tc);
+                    const name = tc.full_name ?? tc.name ?? "—";
+                    const role = tc.role ?? tc.position ?? "Teacher";
+                    return (
+                      <div key={tc.id ?? i} className="flex flex-col items-center gap-2">
+                        {photoUrl ? (
+                          <img src={photoUrl} alt={name} className="w-16 h-16 rounded-full object-cover shadow" />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-linear-to-br from-violet-400 to-blue-400 flex items-center justify-center shadow">
+                            <span className="text-white text-xl font-bold">{name[0]}</span>
+                          </div>
+                        )}
+                        <span className="text-violet-600 text-[12px] font-medium">{role}</span>
+                        <span className="font-bold text-gray-800 text-[13px]">{name}</span>
+                      </div>
+                    );
+                  })
                 ) : (
-                  <p className="text-[13px] text-gray-400">
-                    {t("gd.no_teacher")}
-                  </p>
+                  <p className="text-[13px] text-gray-400">{t("gd.no_teacher")}</p>
                 )}
               </div>
             </div>
@@ -338,14 +354,9 @@ export default function GroupDetail() {
               </div>
               <div className="px-5 py-4 flex flex-col divide-y divide-gray-50">
                 {params.map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-between py-2.5"
-                  >
+                  <div key={label} className="flex items-center justify-between py-2.5">
                     <span className="text-[13px] text-gray-500">{label}</span>
-                    <span className="text-[13px] font-bold text-gray-800">
-                      {value}
-                    </span>
+                    <span className="text-[13px] font-bold text-gray-800">{value}</span>
                   </div>
                 ))}
               </div>
@@ -358,62 +369,54 @@ export default function GroupDetail() {
               {t("gd.schedule")}
             </h2>
 
-            {schedules.length === 0 ? (
+            {teachers.length === 0 ? (
               <p className="text-[13px] text-gray-400 text-center py-6">
                 {t("gd.no_schedule")}
               </p>
             ) : (
               <>
                 <div className="flex flex-col">
-                  {visibleSchedules.map((s, i) => {
-                    const teacher = Array.isArray(s.teachers)
-                      ? s.teachers[0]
-                      : s.teacher;
-                    const days = (Array.isArray(s.week_day) ? s.week_day : [])
-                      .map((d) => DAY_ABBR[d?.toLowerCase()] ?? d)
-                      .join("/");
-                    const timeRange =
-                      s.start_time && s.end_time
-                        ? `${s.start_time} dan - ${s.end_time} gacha`
-                        : (s.start_time ?? "—");
-                    const dateRange = `${formatDate(s.start_date)} - ${formatDate(s.end_date)}`;
-                    const roomName = s.room?.name ?? room.name ?? "—";
-                    const roomCap = s.room?.capacity ?? room.capacity ?? "";
+                  {visibleTeachers.map((tc, i) => {
+                    const rawName = tc.full_name ?? tc.name ?? "—";
+                    const isSupport = rawName.startsWith("+++");
+                    const displayName = isSupport ? rawName.slice(3) : rawName;
 
                     return (
                       <div
-                        key={i}
+                        key={tc.id ?? i}
                         className="flex items-center justify-between py-4 border-b border-gray-100 last:border-b-0 gap-4 text-[13px] flex-wrap"
                       >
-                        <button className="text-blue-500 font-semibold hover:underline cursor-pointer min-w-32">
-                          {teacher
-                            ? (teacher.full_name ?? teacher.name ?? "—")
-                            : "—"}
-                        </button>
-                        <span className="text-gray-500">{days || "—"}</span>
+                        <div className="flex items-center gap-2 min-w-32">
+                          <button className="text-blue-500 font-semibold hover:underline cursor-pointer">
+                            {displayName}
+                          </button>
+                          {isSupport && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 text-orange-600">
+                              Support
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-gray-500">{weekDays || "—"}</span>
                         <span className="text-gray-600">{timeRange}</span>
                         <span className="text-gray-500">{dateRange}</span>
-                        <span className="text-gray-500 text-right">
-                          {roomName}
-                          {roomCap ? ` // ${roomCap}` : ""}
-                        </span>
+                        <span className="text-gray-500 text-right">{roomDisplay}</span>
                       </div>
                     );
                   })}
                 </div>
 
-                {schedules.length > 2 && !showAll && (
+                {teachers.length > 2 && !showAll && (
                   <div className="flex justify-center mt-4">
                     <button
                       onClick={() => setShowAll(true)}
                       className="border border-gray-200 rounded-xl px-6 py-2.5 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
                     >
-                      {t("gd.show_more")} ({schedules.length - 2})
+                      {t("gd.show_more")} ({teachers.length - 2})
                     </button>
                   </div>
                 )}
 
-                {schedules[0] && <ScheduleCalendar schedule={schedules[0]} />}
+                <LessonCalendar lessonDays={lessonDays} groupId={id} />
               </>
             )}
           </div>

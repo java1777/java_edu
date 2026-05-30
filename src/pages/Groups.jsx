@@ -206,7 +206,7 @@ export default function Groups() {
     }
   }
 
-  const totalTeachers = new Set(groups.flatMap((g) => g.teacherIds)).size;
+  const totalTeachers = availableTeachers.length;
   const totalStudents = groups.reduce(
     (sum, g) => sum + (Number(g.students) || 0),
     0,

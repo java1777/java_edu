@@ -232,7 +232,7 @@ export const translations = {
     "gd.param_avg_age":      "O'rta yosh:",
     "gd.param_capacity":     "O'quvchilar sig'imi:",
     "gd.param_students":     "Mavjud o'quvchilar:",
-    "gd.param_lessons_month":"O'quv oyidagi darslar:",
+    "gd.param_lessons_month":"O'quv oyidagi darslar soni:",
     "gd.param_duration":     "Kurs davomiyligi (oy):",
     "gd.param_total_lessons":"Jami darslar soni:",
   },

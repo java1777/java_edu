@@ -3,6 +3,7 @@ import { request } from "./client";
 export const groupsApi = {
   getAll:       ()           => request("/groups/all"),
   getOne:       (id)         => request(`/groups/one/${id}`),
+  getById:      (id)         => request(`/groups/${id}`),
   getStudents:  (groupId)    => request(`/groups/one/students/${groupId}`),
   getArchive:   ()           => request("/groups/archive"),
   getSchedules: (groupId)    => request(`/groups/${groupId}/schedules`),
