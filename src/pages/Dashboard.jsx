@@ -1,92 +1,84 @@
 import { useState, useEffect } from "react";
-import GroupsIcon from "@mui/icons-material/Groups";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
 import SchoolIcon from "@mui/icons-material/School";
-import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
-import PersonIcon from "@mui/icons-material/Person";
+import GroupsIcon from "@mui/icons-material/Groups";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import AcUnitIcon from "@mui/icons-material/AcUnit";
+import ArchiveIcon from "@mui/icons-material/Archive";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import { groupsApi } from "../api/groups";
-import { teachersApi } from "../api/teachers";
 import { studentsApi } from "../api/students";
-import { coursesApi } from "../api/courses";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export default function Dashboard() {
   const { t } = useLanguage();
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [stats, setStats] = useState({
-    groups: 0,
-    courses: 0,
     students: 0,
+    groups: 0,
     payments: 0,
-    teachers: 0,
+    debtors: 0,
+    frozen: 0,
+    archived: 0,
   });
 
   useEffect(() => {
-    groupsApi
-      .getAll()
+    // GET /students — faol talabalar soni
+    studentsApi.getAll(1, 1000)
       .then((res) => {
-        const list = Array.isArray(res)
-          ? res
-          : (res?.data ?? res?.groups ?? []);
-        setStats((p) => ({ ...p, groups: list.length }));
-      })
-      .catch(() => {});
-    coursesApi
-      .getAll()
-      .then((res) => {
-        const list = Array.isArray(res)
-          ? res
-          : (res?.data ?? res?.courses ?? []);
-        setStats((p) => ({ ...p, courses: list.length }));
-      })
-      .catch(() => {});
-    studentsApi
-      .getAll()
-      .then((res) => {
-        const list = Array.isArray(res)
-          ? res
-          : (res?.data ?? res?.students ?? []);
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.students ?? []);
         setStats((p) => ({ ...p, students: list.length }));
       })
       .catch(() => {});
-    teachersApi
-      .getAll()
+
+    // GET /groups/all — guruhlar soni
+    groupsApi.getAll()
       .then((res) => {
-        const list = Array.isArray(res)
-          ? res
-          : (res?.data ?? res?.teachers ?? []);
-        setStats((p) => ({ ...p, teachers: list.length }));
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+        setStats((p) => ({ ...p, groups: list.length }));
+      })
+      .catch(() => {});
+
+    // GET /groups/archive — arxivdagi guruhlar soni
+    groupsApi.getArchive()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+        setStats((p) => ({ ...p, archived: list.length }));
       })
       .catch(() => {});
   }, []);
 
-  const STATS = [
+  const CARDS = [
     {
-      icon: <GroupsIcon sx={{ color: "#7C3AED", fontSize: 30 }} />,
-      labelKey: "dashboard.groups",
-      value: stats.groups,
-    },
-    {
-      icon: <MenuBookIcon sx={{ color: "#7C3AED", fontSize: 30 }} />,
-      labelKey: "dashboard.courses",
-      value: stats.courses,
-    },
-    {
-      icon: <SchoolIcon sx={{ color: "#7C3AED", fontSize: 30 }} />,
-      labelKey: "dashboard.students",
+      icon: <SchoolIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      label: "Faol talabalar",
       value: stats.students,
     },
     {
-      icon: <CardGiftcardIcon sx={{ color: "#7C3AED", fontSize: 30 }} />,
-      labelKey: "dashboard.payments",
+      icon: <GroupsIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      label: "Guruhlar",
+      value: stats.groups,
+    },
+    {
+      icon: <CreditCardIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      label: "Joriy oy to'lovlar",
       value: stats.payments,
     },
     {
-      icon: <PersonIcon sx={{ color: "#7C3AED", fontSize: 30 }} />,
-      labelKey: "dashboard.teachers",
-      value: stats.teachers,
+      icon: <WarningAmberIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      label: "Qarzdorlar",
+      value: stats.debtors,
+    },
+    {
+      icon: <AcUnitIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      label: "Muzlatilganlar",
+      value: stats.frozen,
+    },
+    {
+      icon: <ArchiveIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      label: "Arxivdagilar",
+      value: stats.archived,
     },
   ];
 
@@ -99,22 +91,22 @@ export default function Dashboard() {
         <p className="text-sm text-gray-400">{t("dashboard.welcome")}</p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        {STATS.map((stat, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        {CARDS.map((card, i) => (
           <div
             key={i}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5
-                       flex flex-col items-center gap-2 cursor-pointer
+                       flex flex-col items-center gap-2
                        transition-all duration-200 hover:scale-105 hover:shadow-lg hover:border-violet-100"
           >
             <div className="w-12 h-12 rounded-full bg-violet-50 flex items-center justify-center mb-1">
-              {stat.icon}
+              {card.icon}
             </div>
-            <span className="text-xs text-gray-400 font-medium">
-              {t(stat.labelKey)}
+            <span className="text-[12px] text-gray-400 font-medium text-center">
+              {card.label}
             </span>
             <span className="text-3xl font-extrabold text-gray-800">
-              {stat.value}
+              {card.value}
             </span>
           </div>
         ))}

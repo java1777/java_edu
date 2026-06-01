@@ -40,10 +40,19 @@ export default function MainLayout() {
         boshqarishRef={boshqarishRef}
       />
 
+      {/* Dark backdrop */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+
       <BoshqarishMenu
         menuOpen={menuOpen}
         setMenuOpen={setMenuOpen}
         collapsed={collapsed}
+        mobileOpen={mobileOpen}
         menuRef={menuRef}
       />
 

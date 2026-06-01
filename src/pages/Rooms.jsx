@@ -21,6 +21,8 @@ export default function Rooms() {
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ name: "", capacity: "" });
   const [errors, setErrors] = useState({});
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const loadRooms = useCallback(async () => {
     setLoading(true);
@@ -90,12 +92,18 @@ export default function Rooms() {
     }
   }
 
-  async function handleDelete(id) {
+  async function confirmDelete() {
+    if (!deleteId) return;
+    setDeleting(true);
     try {
-      await roomsApi.remove(id);
-      setRooms((prev) => prev.filter((r) => r.id !== id));
+      await roomsApi.remove(deleteId);
+      setRooms((prev) => prev.filter((r) => r.id !== deleteId));
+      setDeleteId(null);
     } catch (err) {
-      alert(err.message);
+      setApiError(err.message);
+      setDeleteId(null);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -176,7 +184,7 @@ export default function Rooms() {
                 </div>
                 <div className="flex items-center gap-1">
                   <button
-                    onClick={() => handleDelete(room.id)}
+                    onClick={() => setDeleteId(room.id)}
                     className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
                   >
                     <DeleteIcon sx={{ fontSize: 17, color: "#EF4444" }} />
@@ -194,12 +202,38 @@ export default function Rooms() {
         )}
       </div>
 
+      {/* Delete confirmation modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteId(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl px-8 py-7 w-80 z-10">
+            <h3 className="text-[17px] font-bold text-gray-800 mb-2">Xonani o'chirish</h3>
+            <p className="text-[13px] text-gray-500 mb-6">Rostdan ham o'chirishni hohlaysizmi?</p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="text-[13px] font-semibold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleting}
+                className="bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white text-[13px] font-semibold px-5 py-2 rounded-xl transition-colors cursor-pointer"
+              >
+                {deleting ? "..." : "Ha"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Backdrop */}
       <div
         onClick={closeDrawer}
         className="fixed inset-0 z-40 transition-all duration-500"
         style={{
-          background: drawerOpen ? "rgba(0,0,0,0.15)" : "transparent",
+          background: drawerOpen ? "rgba(0,0,0,0.35)" : "transparent",
           pointerEvents: drawerOpen ? "auto" : "none",
         }}
       />

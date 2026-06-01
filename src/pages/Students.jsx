@@ -264,7 +264,7 @@ export default function Students() {
     }
     setSaving(true);
     try {
-      const body = {
+      const apiBody = {
         phone: form.phone,
         email: form.email,
         full_name: form.fio,
@@ -273,7 +273,19 @@ export default function Students() {
         gender: GENDER_MAP[form.gender] ?? form.gender,
         groups: groups.filter((g) => g.id).map((g) => g.id),
       };
-      if (form.password) body.password = form.password;
+      if (form.password) apiBody.password = form.password;
+
+      let body;
+      if (form.photo instanceof File) {
+        body = new FormData();
+        Object.entries(apiBody).forEach(([k, v]) => {
+          if (Array.isArray(v)) v.forEach((item) => body.append(k, item));
+          else if (v != null) body.append(k, v);
+        });
+        body.append("photo", form.photo);
+      } else {
+        body = apiBody;
+      }
 
       if (isEdit) {
         await studentsApi.update(editId, body);
@@ -574,7 +586,7 @@ export default function Students() {
         onClick={closeDrawer}
         className="fixed inset-0 z-40 transition-all duration-500"
         style={{
-          background: drawerOpen ? "rgba(0,0,0,0.2)" : "transparent",
+          background: drawerOpen ? "rgba(0,0,0,0.35)" : "transparent",
           pointerEvents: drawerOpen ? "auto" : "none",
         }}
       />

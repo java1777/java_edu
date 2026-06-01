@@ -16,6 +16,15 @@ import { groupsApi } from "../api/groups";
 import { useLanguage } from "../contexts/LanguageContext";
 
 // ─── Backend response normalize ──────────────────────────────────────────────
+const SERVER_ORIGIN = "https://najot-edu.softwareengineer.uz";
+
+function fixPhotoUrl(url) {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("/")) return `${SERVER_ORIGIN}${url}`;
+  return `${SERVER_ORIGIN}/media/${url}`;
+}
+
 function normalizeList(res) {
   if (Array.isArray(res)) return res;
   if (Array.isArray(res?.data)) return res.data;
@@ -30,7 +39,7 @@ function toUiTeacher(t) {
     phone: t.phone ?? "—",
     email: t.email ?? "—",
     address: t.address ?? "—",
-    photo: t.image ?? t.photo ?? t.avatar ?? t.profile_image ?? null,
+    photo: fixPhotoUrl(t.photo ?? t.image ?? t.avatar ?? t.profile_image ?? null),
     groups: Array.isArray(t.groups) ? t.groups.map((g) => g.name ?? g) : [],
     extra: 0,
     created: t.created_at
@@ -40,16 +49,13 @@ function toUiTeacher(t) {
 }
 
 function toApiBody(form, groups) {
-  const genderMap = { Erkak: "male", Ayol: "female" };
   return {
     phone: form.phone,
     email: form.email,
     full_name: form.fio,
-    birthday: form.birthDate,
-    gender: genderMap[form.gender] ?? form.gender,
     address: form.address,
     password: form.password,
-    groups: groups.map((g) => g.id),
+    groups: groups.filter((g) => g.id != null).map((g) => g.id),
   };
 }
 
@@ -97,6 +103,7 @@ export default function Teachers() {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [groups, setGroups] = useState([]);
   const [photoPreview, setPhotoPreview] = useState(null);
@@ -178,6 +185,7 @@ export default function Teachers() {
 
   // ── Drawer ───────────────────────────────────────────────────────────────
   function openDrawer() {
+    setEditingId(null);
     setForm(EMPTY_FORM);
     setGroups([]);
     setPhotoPreview(null);
@@ -185,7 +193,49 @@ export default function Teachers() {
     setDrawerOpen(true);
   }
   function closeDrawer() {
+    setEditingId(null);
     setDrawerOpen(false);
+  }
+
+  async function openEdit(tc) {
+    setErrors({});
+    setPhotoPreview(tc.photo || null);
+    try {
+      const raw = await teachersApi.getOne(tc.id);
+      const teacher = raw?.data ?? raw;
+      const GENDER_UNMAP = { male: "Erkak", female: "Ayol" };
+      setForm({
+        phone: teacher.phone ?? tc.phone ?? "+998",
+        email: teacher.email ?? tc.email ?? "",
+        fio: teacher.full_name ?? teacher.name ?? tc.name ?? "",
+        birthDate: teacher.birthday ?? teacher.birth_date ?? "1990-03-01",
+        gender: GENDER_UNMAP[teacher.gender] ?? teacher.gender ?? "",
+        address: teacher.address ?? tc.address ?? "",
+        photo: null,
+        password: "",
+      });
+      const teacherGroups = Array.isArray(teacher.groups) ? teacher.groups : [];
+      const resolvedGroups = teacherGroups.map((g) => {
+        if (g.id != null) return { id: g.id, name: g.name ?? String(g) };
+        const found = availableGroups.find((ag) => ag.name === (g.name ?? g));
+        return found ? { id: found.id, name: found.name } : { id: null, name: g.name ?? String(g) };
+      });
+      setGroups(resolvedGroups);
+    } catch {
+      setForm({
+        phone: tc.phone ?? "+998",
+        email: tc.email ?? "",
+        fio: tc.name ?? "",
+        birthDate: "1990-03-01",
+        gender: "",
+        address: tc.address ?? "",
+        photo: null,
+        password: "",
+      });
+      setGroups([]);
+    }
+    setEditingId(tc.id);
+    setDrawerOpen(true);
   }
 
   function handlePhoto(e) {
@@ -213,12 +263,11 @@ export default function Teachers() {
     if (!form.phone.trim() || form.phone === "+998")
       e.phone = t("common.phone") + " " + t("common.not_found");
     if (!form.fio.trim()) e.fio = t("teachers.form_fio");
-    if (!form.gender) e.gender = t("common.gender");
-    if (!form.password.trim()) e.password = t("common.password");
+    if (!editingId && !form.password.trim()) e.password = t("common.password");
     return e;
   }
 
-  // ── POST /api/v1/teachers ────────────────────────────────────────────────
+  // ── POST / PATCH /api/v1/teachers ────────────────────────────────────────
   async function handleSave() {
     const e = validate();
     if (Object.keys(e).length) {
@@ -227,7 +276,26 @@ export default function Teachers() {
     }
     setSaving(true);
     try {
-      await teachersApi.create(toApiBody(form, groups));
+      const apiBody = toApiBody(form, groups);
+      if (editingId && !apiBody.password) delete apiBody.password;
+
+      let body;
+      if (form.photo instanceof File) {
+        body = new FormData();
+        Object.entries(apiBody).forEach(([k, v]) => {
+          if (Array.isArray(v)) v.forEach((item) => body.append(k, item));
+          else if (v != null) body.append(k, v);
+        });
+        body.append("photo", form.photo);
+      } else {
+        body = apiBody;
+      }
+
+      if (editingId) {
+        await teachersApi.update(editingId, body);
+      } else {
+        await teachersApi.create(body);
+      }
       closeDrawer();
       await loadTeachers();
     } catch (err) {
@@ -462,7 +530,10 @@ export default function Teachers() {
                                 sx={{ fontSize: 16, color: "#9CA3AF" }}
                               />
                             </button>
-                            <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors">
+                            <button
+                              onClick={() => openEdit(tc)}
+                              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-50 cursor-pointer transition-colors"
+                            >
                               <EditIcon
                                 sx={{ fontSize: 15, color: "#9CA3AF" }}
                               />
@@ -520,7 +591,7 @@ export default function Teachers() {
         onClick={closeDrawer}
         className="fixed inset-0 z-40 transition-all duration-500"
         style={{
-          background: drawerOpen ? "rgba(0,0,0,0.2)" : "transparent",
+          background: drawerOpen ? "rgba(0,0,0,0.35)" : "transparent",
           pointerEvents: drawerOpen ? "auto" : "none",
         }}
       />
@@ -533,7 +604,7 @@ export default function Teachers() {
         <div className="px-6 pt-6 pb-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[16px] font-bold text-gray-800">
-              {t("teachers.drawer_add")}
+              {editingId ? t("common.edit") : t("teachers.drawer_add")}
             </span>
             <button
               onClick={closeDrawer}

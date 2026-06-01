@@ -1,6 +1,7 @@
 import { request } from "./client";
 
 export const filesApi = {
-  getByGroup: (groupId)          => request(`/files/${groupId}`),
-  upload:     (grupId, formData) => request(`/files/group/${grupId}/upload`, { method: "POST", body: formData }),
+  getByGroup: (groupId)              => request(`/files/${groupId}`),
+  upload:     (groupId, lessonId, formData) =>
+    request(`/files/group/${groupId}/upload?lessonId=${lessonId}`, { method: "POST", body: formData }),
 };

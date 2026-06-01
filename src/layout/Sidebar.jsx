@@ -3,7 +3,7 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
-import { NAV_ITEMS } from "../constants/nav.jsx";
+import { NAV_ITEMS, BOSHQARISH_MENU } from "../constants/nav.jsx";
 import { useLanguage } from "../contexts/LanguageContext";
 
 export default function Sidebar({
@@ -38,19 +38,21 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-[18px] z-10 w-6 h-6 bg-white border border-gray-200
-                   rounded-full flex items-center justify-center shadow-sm
-                   hover:bg-violet-50 transition-colors cursor-pointer"
-      >
-        {collapsed ? (
-          <ChevronRightIcon sx={{ fontSize: 13, color: "#7C3AED" }} />
-        ) : (
-          <ChevronLeftIcon sx={{ fontSize: 13, color: "#7C3AED" }} />
-        )}
-      </button>
+      {/* Collapse toggle — menu ochiq bo'lsa ko'rinmaydi */}
+      {!menuOpen && (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="absolute -right-3 top-4.5 z-10 w-6 h-6 bg-white border border-gray-200
+                     rounded-full flex items-center justify-center shadow-sm
+                     hover:bg-violet-50 transition-colors cursor-pointer"
+        >
+          {collapsed ? (
+            <ChevronRightIcon sx={{ fontSize: 13, color: "#7C3AED" }} />
+          ) : (
+            <ChevronLeftIcon sx={{ fontSize: 13, color: "#7C3AED" }} />
+          )}
+        </button>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 py-4 flex flex-col gap-0.5 px-2 overflow-y-auto">
@@ -61,8 +63,7 @@ export default function Sidebar({
             onClick={() => {
               setMobileOpen(false);
               if (item.path === "/settings") {
-                setMenuOpen(true);
-                navigate("/dashboard");
+                setMenuOpen((prev) => !prev);
               } else {
                 setMenuOpen(false);
                 navigate(item.path);
@@ -74,10 +75,13 @@ export default function Sidebar({
               transition-all duration-150 cursor-pointer
               ${
                 item.path === "/settings"
-                  ? menuOpen
+                  ? menuOpen || BOSHQARISH_MENU.some((m) => location.pathname === m.path)
                     ? "bg-violet-600 text-white shadow-sm"
                     : "text-gray-500 hover:bg-violet-50 hover:text-violet-700"
-                  : location.pathname === item.path
+                  : !menuOpen && (
+                      location.pathname === item.path ||
+                      (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"))
+                    )
                     ? "bg-violet-600 text-white shadow-sm"
                     : "text-gray-500 hover:bg-violet-50 hover:text-violet-700"
               }

@@ -5,14 +5,23 @@ import { groupsApi } from "../api/groups";
 import { lessonsApi } from "../api/lessons";
 import { attendanceApi } from "../api/attendance";
 
+const SERVER_ORIGIN = "https://najot-edu.softwareengineer.uz";
+
+function fixPhotoUrl(url) {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("/")) return `${SERVER_ORIGIN}${url}`;
+  return `${SERVER_ORIGIN}/media/${url}`;
+}
+
 function normalizeList(res, keys = []) {
   if (Array.isArray(res)) return res;
   if (Array.isArray(res?.data)) return res.data;
-  for (const key of keys) {
-    if (Array.isArray(res?.[key])) return res[key];
-  }
+  for (const key of keys) if (Array.isArray(res?.[key])) return res[key];
   return [];
 }
+
+const MONTHS = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
 
 export default function LessonDetail() {
   const { groupId, date } = useParams();
@@ -28,7 +37,9 @@ export default function LessonDetail() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [topicError, setTopicError] = useState("");
+  const [saveError, setSaveError] = useState("");
 
+  // GET /groups/one/students/{groupId} + GET /lessons/my/group/{groupId}
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -65,36 +76,35 @@ export default function LessonDetail() {
     setAttendance((prev) => ({ ...prev, [studentId]: !prev[studentId] }));
   }
 
+  // POST /lessons + POST /attendance (swagger bo'yicha)
   async function handleSave() {
-    if (!topic.trim()) {
-      setTopicError("Mavzu kiritilishi shart");
-      return;
-    }
+    if (!topic.trim()) { setTopicError("Mavzu kiritilishi shart"); return; }
     setTopicError("");
+    setSaveError("");
     setSaving(true);
     try {
+      // POST /lessons → {group_id, topic, description}
       const lessonRes = await lessonsApi.create({
         group_id: Number(groupId),
-        date,
         topic: topic.trim(),
         description: description.trim(),
-        type: lessonType,
       });
       const lessonId = lessonRes?.data?.id ?? lessonRes?.id;
 
-      if (lessonId) {
-        await attendanceApi.create({
-          lesson_id: lessonId,
-          attendance: Object.entries(attendance).map(([studentId, came]) => ({
+      // POST /attendance → {group_id, student_id, isPresent} har bir o'quvchi uchun
+      await Promise.all(
+        Object.entries(attendance).map(([studentId, came]) =>
+          attendanceApi.create({
+            group_id: Number(groupId),
             student_id: Number(studentId),
-            is_attended: came,
-          })),
-        });
-      }
+            isPresent: came,
+          })
+        )
+      );
       setSaved(true);
       setExistingLesson({ id: lessonId });
     } catch (err) {
-      alert("Xatolik: " + err.message);
+      setSaveError(err.message ?? "Xatolik yuz berdi");
     } finally {
       setSaving(false);
     }
@@ -103,9 +113,16 @@ export default function LessonDetail() {
   const displayDate = (() => {
     if (!date) return "";
     const [y, m, d] = date.split("-");
-    const months = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
-    return `${Number(d)} ${months[Number(m) - 1]}, ${y}`;
+    return `${Number(d)} ${MONTHS[Number(m) - 1]}, ${y}`;
   })();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-[13px] text-gray-400">
+        Yuklanmoqda...
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -124,28 +141,26 @@ export default function LessonDetail() {
 
       <div className="max-w-4xl mx-auto px-6 py-5 flex flex-col gap-4">
 
-        {/* Lesson type radios */}
+        {/* Save error */}
+        {saveError && (
+          <div className="flex items-center justify-between bg-red-50 border border-red-200 text-red-600 text-[13px] font-semibold px-4 py-3 rounded-xl">
+            <span>⚠ {saveError}</span>
+            <button onClick={() => setSaveError("")} className="ml-4 text-red-400 hover:text-red-600 cursor-pointer font-bold">✕</button>
+          </div>
+        )}
+
+        {/* Lesson type */}
         <div className="flex items-center gap-6">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="lessonType"
-              value="plan"
-              checked={lessonType === "plan"}
-              onChange={() => setLessonType("plan")}
-              className="accent-violet-600 w-4 h-4"
-            />
+          <label className={`flex items-center gap-2 ${saved ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+            <input type="radio" name="lessonType" value="plan" checked={lessonType === "plan"}
+              onChange={() => !saved && setLessonType("plan")} disabled={saved}
+              className="accent-violet-600 w-4 h-4" />
             <span className="text-[13px] text-gray-600">O'quv reja bo'yicha</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="radio"
-              name="lessonType"
-              value="other"
-              checked={lessonType === "other"}
-              onChange={() => setLessonType("other")}
-              className="accent-violet-600 w-4 h-4"
-            />
+          <label className={`flex items-center gap-2 ${saved ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+            <input type="radio" name="lessonType" value="other" checked={lessonType === "other"}
+              onChange={() => !saved && setLessonType("other")} disabled={saved}
+              className="accent-violet-600 w-4 h-4" />
             <span className={`text-[13px] font-semibold ${lessonType === "other" ? "text-green-500" : "text-gray-600"}`}>
               Boshqa
             </span>
@@ -154,58 +169,48 @@ export default function LessonDetail() {
 
         {/* Topic */}
         <div>
-          <label className="block text-[13px] font-semibold text-red-500 mb-1">
-            * Mavzu
-          </label>
+          <label className="block text-[13px] font-semibold text-red-500 mb-1">* Mavzu</label>
           <input
             type="text"
             value={topic}
-            onChange={(e) => { setTopic(e.target.value); setTopicError(""); }}
+            onChange={(e) => { if (!saved) { setTopic(e.target.value); setTopicError(""); } }}
+            readOnly={saved}
             placeholder="Dars mavzusini kiriting"
-            className={`w-full border rounded-xl px-4 py-2.5 text-[13px] bg-white outline-none transition-colors
-              ${topicError ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
+            className={`w-full border rounded-xl px-4 py-2.5 text-[13px] outline-none transition-colors
+              ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
+                : topicError ? "border-red-400 bg-white"
+                : "border-gray-200 focus:border-violet-400 bg-white"}`}
           />
-          {topicError && (
-            <p className="text-[11px] text-red-500 mt-1">{topicError}</p>
-          )}
+          {topicError && <p className="text-[11px] text-red-500 mt-1">{topicError}</p>}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-[13px] font-semibold text-gray-600 mb-1">
-            Tavsif (ixtiyoriy)
-          </label>
+          <label className="block text-[13px] font-semibold text-gray-600 mb-1">Tavsif (ixtiyoriy)</label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => { if (!saved) setDescription(e.target.value); }}
+            readOnly={saved}
             placeholder="Dars haqida qo'shimcha ma'lumot..."
             rows={3}
-            className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-4 py-2.5 text-[13px] bg-white outline-none transition-colors resize-none"
+            className={`w-full border rounded-xl px-4 py-2.5 text-[13px] outline-none transition-colors resize-none
+              ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
+                : "border-gray-200 focus:border-violet-400 bg-white"}`}
           />
         </div>
 
-        {/* Students table */}
+        {/* Students */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 w-10">#</th>
-                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">
-                  O'quvchi ismi
-                </th>
-                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-right pr-6">
-                  Keldi
-                </th>
+                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
+                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">O'quvchi ismi</th>
+                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-right pr-6">Keldi</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={3} className="px-5 py-10 text-center text-[13px] text-gray-400">
-                    Yuklanmoqda...
-                  </td>
-                </tr>
-              ) : students.length === 0 ? (
+              {students.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-5 py-10 text-center text-[13px] text-gray-400">
                     O'quvchilar topilmadi
@@ -214,39 +219,28 @@ export default function LessonDetail() {
               ) : (
                 students.map((s, idx) => {
                   const name = s.full_name ?? s.name ?? "—";
-                  const photo = s.image ?? s.photo ?? s.avatar ?? null;
+                  const photo = fixPhotoUrl(s.image ?? s.photo ?? s.avatar ?? null);
                   const came = attendance[s.id] ?? false;
                   return (
-                    <tr
-                      key={s.id}
-                      className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-5 py-3.5 text-[13px] text-gray-500 w-10">
-                        {idx + 1}
-                      </td>
+                    <tr key={s.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors">
+                      <td className="px-5 py-3.5 text-[13px] text-gray-500 w-10">{idx + 1}</td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           {photo ? (
-                            <img
-                              src={photo}
-                              alt={name}
-                              className="w-8 h-8 rounded-full object-cover shrink-0"
-                            />
+                            <img src={photo} alt={name} className="w-8 h-8 rounded-full object-cover shrink-0" />
                           ) : (
                             <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                              <span className="text-gray-600 text-[12px] font-semibold uppercase">
-                                {name[0]}
-                              </span>
+                              <span className="text-gray-600 text-[12px] font-semibold uppercase">{name[0]}</span>
                             </div>
                           )}
                           <span className="text-[13px] text-gray-800">{name}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 pr-6 text-right">
-                        {/* Toggle */}
                         <button
-                          onClick={() => toggleAttendance(s.id)}
-                          className="cursor-pointer"
+                          onClick={() => !saved && toggleAttendance(s.id)}
+                          disabled={saved}
+                          className={saved ? "cursor-not-allowed opacity-70" : "cursor-pointer"}
                         >
                           {came ? (
                             <div className="w-6 h-6 rounded-full bg-green-500 shadow-sm" />
@@ -265,19 +259,17 @@ export default function LessonDetail() {
           </table>
         </div>
 
-        {/* Bottom save row */}
+        {/* Save button */}
         <div className="flex items-center justify-end gap-4 py-2">
-          {saved && (
-            <span className="text-[13px] text-gray-400">
-              Dars allaqachon saqlangan
-            </span>
-          )}
           <button
             onClick={handleSave}
-            disabled={saving || !!existingLesson}
-            className="bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-[13px] font-semibold px-5 py-2 rounded-xl transition-colors cursor-pointer"
+            disabled={saving || saved}
+            className={`text-[13px] font-semibold px-5 py-2 rounded-xl transition-colors
+              ${saved
+                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                : "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"}`}
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {saving ? "Saqlanmoqda..." : saved ? "Dars allaqachon saqlangan" : "Saqlash"}
           </button>
         </div>
 

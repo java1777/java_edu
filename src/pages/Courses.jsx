@@ -251,7 +251,7 @@ export default function Courses() {
         onClick={closeDrawer}
         className="fixed inset-0 z-40 transition-all duration-500"
         style={{
-          background: drawerOpen ? "rgba(0,0,0,0.15)" : "transparent",
+          background: drawerOpen ? "rgba(0,0,0,0.35)" : "transparent",
           pointerEvents: drawerOpen ? "auto" : "none",
         }}
       />

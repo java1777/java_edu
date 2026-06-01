@@ -7,6 +7,8 @@ import Teachers from "./pages/Teachers";
 import Groups from "./pages/Groups";
 import GroupDetail from "./pages/GroupDetail";
 import LessonDetail from "./pages/LessonDetail";
+import HomeworkCreate from "./pages/HomeworkCreate";
+import ExamCreate from "./pages/ExamCreate";
 import Students from "./pages/Students";
 import Payments from "./pages/Payments";
 import Settings from "./pages/Settings";
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
       { path: "/dashboard/groups", element: <Groups /> },
       { path: "/dashboard/groups/:id", element: <GroupDetail /> },
       { path: "/dashboard/groups/:groupId/lesson/:date", element: <LessonDetail /> },
+      { path: "/dashboard/groups/:groupId/homework/create", element: <HomeworkCreate /> },
+      { path: "/dashboard/groups/:groupId/exam/create", element: <ExamCreate /> },
       { path: "/dashboard/students", element: <Students /> },
       { path: "/dashboard/payments", element: <Payments /> },
       { path: "/dashboard/settings", element: <Settings /> },

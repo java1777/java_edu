@@ -23,6 +23,16 @@ const DAYS = [
   "Yakshanba",
 ];
 
+const DAY_TO_API = {
+  Dushanba: "MONDAY",
+  Seshanba: "TUESDAY",
+  Chorshanba: "WEDNESDAY",
+  Payshanba: "THURSDAY",
+  Juma: "FRIDAY",
+  Shanba: "SATURDAY",
+  Yakshanba: "SUNDAY",
+};
+
 const GROUP_EMPTY = {
   name: "",
   course: "",
@@ -31,6 +41,7 @@ const GROUP_EMPTY = {
   time: "09:00",
   startDate: "",
   tavsif: "",
+  maxStudent: "",
   teachers: [],
   students: [],
 };
@@ -39,7 +50,7 @@ function toUiGroup(g) {
   const teachers = Array.isArray(g.teachers) ? g.teachers : [];
   return {
     id: g.id,
-    active: g.active ?? true,
+    active: g.active === true,
     name: g.name ?? "—",
     course: g.course?.name ?? g.course ?? "—",
     duration: g.course?.duration_month
@@ -67,6 +78,8 @@ export default function Groups() {
 
   const [activeTab, setActiveTab] = useState(0);
   const [groups, setGroups] = useState([]);
+  const [archivedGroups, setArchivedGroups] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -78,6 +91,7 @@ export default function Groups() {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [availableTeachers, setAvailableTeachers] = useState([]);
   const [availableStudents, setAvailableStudents] = useState([]);
+  const [roomSchedule, setRoomSchedule] = useState([]);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
@@ -146,10 +160,16 @@ export default function Groups() {
   const [teacherSearch, setTeacherSearch] = useState("");
   const [tempTeachers, setTempTeachers] = useState([]);
 
-  function toggleActive(id) {
-    setGroups((p) =>
-      p.map((g) => (g.id === id ? { ...g, active: !g.active } : g)),
-    );
+  async function toggleActive(id) {
+    const current = groups.find((g) => g.id === id);
+    if (!current) return;
+    const newActive = !current.active;
+    setGroups((p) => p.map((g) => (g.id === id ? { ...g, active: newActive } : g)));
+    try {
+      await groupsApi.update(id, { active: newActive });
+    } catch {
+      setGroups((p) => p.map((g) => (g.id === id ? { ...g, active: current.active } : g)));
+    }
   }
 
   function openDrawer() {
@@ -189,12 +209,15 @@ export default function Groups() {
     try {
       const body = {
         name: form.name.trim(),
+        description: form.tavsif.trim(),
         course_id: Number(form.course),
         room_id: Number(form.room),
-        days: form.days,
+        week_day: form.days.map((d) => DAY_TO_API[d] ?? d),
         start_time: form.time,
         start_date: form.startDate,
-        description: form.tavsif,
+        max_student: Number(form.maxStudent) || 0,
+        teachers: form.teachers.map((tc) => tc.id),
+        students: form.students.map((s) => s.id),
       };
       await groupsApi.create(body);
       closeDrawer();
@@ -237,7 +260,19 @@ export default function Groups() {
           <PeopleIcon sx={{ fontSize: 16 }} /> {t("groups.tab_groups")}
         </button>
         <button
-          onClick={() => setActiveTab(1)}
+          onClick={() => {
+            setActiveTab(1);
+            if (archivedGroups.length === 0) {
+              setArchiveLoading(true);
+              groupsApi.getArchive()
+                .then((res) => {
+                  const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+                  setArchivedGroups(list.map(toUiGroup));
+                })
+                .catch(() => setArchivedGroups([]))
+                .finally(() => setArchiveLoading(false));
+            }
+          }}
           className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer
             ${activeTab === 1 ? "bg-white border border-gray-200 shadow-sm text-gray-800" : "text-gray-400 hover:text-gray-600"}`}
         >
@@ -304,15 +339,59 @@ export default function Groups() {
         </div>
       </div>
 
+      {/* Archive tab */}
+      {activeTab === 1 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {archiveLoading ? (
+            <p className="text-center text-[13px] text-gray-400 py-10">Yuklanmoqda...</p>
+          ) : archivedGroups.length === 0 ? (
+            <p className="text-center text-[13px] text-gray-400 py-10">Arxivda guruhlar yo'q</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-187.5">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_name")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_course")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_duration")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_time")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_room")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_teacher")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_students")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {archivedGroups.map((g) => (
+                    <tr key={g.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(`/dashboard/groups/${g.id}`)}>
+                      <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">{g.name}</td>
+                      <td className="px-4 py-4 text-[13px] font-semibold text-violet-600">{g.course}</td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">{g.duration}</td>
+                      <td className="px-4 py-4">
+                        <p className="text-[13px] font-semibold text-gray-800">{g.time}</p>
+                        <p className="text-[11px] text-gray-400">{g.days}</p>
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">{g.room}</td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">{g.teacher}</td>
+                      <td className="px-4 py-4 text-[13px] font-bold text-gray-800">{g.students}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {activeTab === 0 && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {apiError && (
           <div className="px-5 py-3 bg-red-50 text-red-600 text-[13px] border-b border-red-100">
             {apiError}
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[750px]">
+          <table className="w-full text-left min-w-187.5">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
@@ -429,14 +508,14 @@ export default function Groups() {
             </tbody>
           </table>
         </div>
-      </div>
+      </div>}
 
       {/* Drawer backdrop */}
       <div
         onClick={closeDrawer}
         className="fixed inset-0 z-40 transition-all duration-500"
         style={{
-          background: drawerOpen ? "rgba(0,0,0,0.2)" : "transparent",
+          background: drawerOpen ? "rgba(0,0,0,0.35)" : "transparent",
           pointerEvents: drawerOpen ? "auto" : "none",
         }}
       />
@@ -521,8 +600,19 @@ export default function Groups() {
             <select
               value={form.room}
               onChange={(e) => {
-                setForm((p) => ({ ...p, room: e.target.value }));
+                const roomId = e.target.value;
+                setForm((p) => ({ ...p, room: roomId }));
                 setErrors((p) => ({ ...p, room: "" }));
+                if (roomId) {
+                  const selectedRoom = availableRooms.find((r) => String(r.id) === roomId);
+                  const busy = groups.filter((g) => {
+                    const gRoom = g.room ?? "";
+                    return selectedRoom && (gRoom === selectedRoom.name || gRoom.startsWith(selectedRoom.name));
+                  }).map((g) => ({ name: g.name, time: g.time, days: g.days }));
+                  setRoomSchedule(busy);
+                } else {
+                  setRoomSchedule([]);
+                }
               }}
               className={`w-full border rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors bg-white ${errors.room ? "border-red-400" : "border-gray-200 focus:border-violet-400"}`}
             >
@@ -535,6 +625,27 @@ export default function Groups() {
             </select>
             {errors.room && (
               <p className="text-[11px] text-red-500 mt-1">{errors.room}</p>
+            )}
+            {roomSchedule.length > 0 && (
+              <div className="mt-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
+                <p className="text-[11px] font-bold text-orange-600 mb-1.5">
+                  🔴 Band vaqtlar:
+                </p>
+                {roomSchedule.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between text-[11px] text-orange-700 py-0.5 border-b border-orange-100 last:border-0">
+                    <span className="font-semibold">{s.name}</span>
+                    <span>{s.days} — {s.time}</span>
+                  </div>
+                ))}
+                <p className="text-[11px] text-orange-500 mt-1.5">
+                  ✅ Bo'sh vaqtni tanlang
+                </p>
+              </div>
+            )}
+            {form.room && roomSchedule.length === 0 && (
+              <p className="text-[11px] text-green-600 mt-1 font-semibold">
+                ✅ Bu xona hozircha bo'sh
+              </p>
             )}
           </div>
 
@@ -597,6 +708,21 @@ export default function Groups() {
                 {errors.startDate}
               </p>
             )}
+          </div>
+
+          {/* Max students */}
+          <div>
+            <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">
+              O'quvchilar sig'imi <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              placeholder="Masalan: 20"
+              value={form.maxStudent}
+              onChange={(e) => setForm((p) => ({ ...p, maxStudent: e.target.value }))}
+              className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors"
+            />
           </div>
 
           {/* Description */}
