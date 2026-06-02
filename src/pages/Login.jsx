@@ -19,6 +19,7 @@ const API_URL = "https://najot-edu.softwareengineer.uz/api/v1/auth/login";
 
 export default function Login() {
   const navigate = useNavigate();
+  const [name, setName] = useState(() => localStorage.getItem("user_name") ?? "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,6 +49,7 @@ export default function Login() {
         data?.data?.token ??
         data?.data?.access_token;
       if (token) saveToken(token);
+      if (name.trim()) localStorage.setItem("user_name", name.trim());
       setSuccessOpen(true);
       navigate("/dashboard");
     } catch {
@@ -94,6 +96,19 @@ export default function Login() {
           onSubmit={handleSubmit}
           className="w-full max-w-sm flex flex-col gap-5"
         >
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Ismingiz</label>
+            <TextField
+              fullWidth
+              placeholder="Ismingizni kiriting"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              size="small"
+              variant="outlined"
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "4px" } }}
+            />
+          </div>
+
           <div>
             <label className="block text-sm text-gray-700 mb-1">Telefon</label>
             <TextField

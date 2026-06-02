@@ -50,9 +50,21 @@ export default function LessonDetail() {
       setStudents(studentList);
 
       const lessonList = normalizeList(lessonsRes, ["lessons"]);
-      const todayLesson = lessonList.find(
-        (l) => l.date === date || l.date?.startsWith(date)
-      );
+
+      // 1) localStorage dan saqlangan lesson ID ni tekshir
+      const savedKey = `lesson_${groupId}_${date}`;
+      const savedLessonId = localStorage.getItem(savedKey);
+
+      const todayLesson = lessonList.find((l) => {
+        // a) Exact date match
+        if (l.date && (l.date === date || l.date.startsWith(date))) return true;
+        // b) localStorage da saqlangan ID bilan
+        if (savedLessonId && String(l.id) === savedLessonId) return true;
+        // c) created_at sana mos kelsa (backend date qaytarmasa)
+        const createdAt = l.created_at ?? l.createdAt ?? "";
+        if (createdAt.startsWith(date)) return true;
+        return false;
+      });
 
       const attMap = {};
       studentList.forEach((s) => { attMap[s.id] = false; });
@@ -63,12 +75,36 @@ export default function LessonDetail() {
         setTopic(todayLesson.topic ?? todayLesson.title ?? "");
         setDescription(todayLesson.description ?? "");
         setLessonType(todayLesson.type === "other" ? "other" : "plan");
-        const attList = Array.isArray(todayLesson.attendance) ? todayLesson.attendance : [];
-        attList.forEach((a) => {
-          if (a.student_id != null) attMap[a.student_id] = a.is_attended ?? false;
-        });
+
+        // lesson.attendance bo'sh bo'lsa → attendance API dan yuklaymiz
+        const attList = Array.isArray(todayLesson.attendance) && todayLesson.attendance.length > 0
+          ? todayLesson.attendance
+          : null;
+
+        if (attList) {
+          attList.forEach((a) => {
+            if (a.student_id != null) attMap[a.student_id] = a.is_attended ?? a.isPresent ?? false;
+          });
+          setAttendance(attMap);
+        } else {
+          // Attendance API dan yuklash
+          attendanceApi.getAll()
+            .then((attRes) => {
+              const allAtt = Array.isArray(attRes) ? attRes : (attRes?.data ?? []);
+              const groupAtt = allAtt.filter(
+                (a) => a.group_id === Number(groupId) || a.Group?.id === Number(groupId)
+              );
+              groupAtt.forEach((a) => {
+                const sid = a.student_id ?? a.Student?.id;
+                if (sid != null) attMap[sid] = a.isPresent ?? a.is_attended ?? false;
+              });
+              setAttendance({ ...attMap });
+            })
+            .catch(() => setAttendance(attMap));
+        }
+      } else {
+        setAttendance(attMap);
       }
-      setAttendance(attMap);
     }).finally(() => setLoading(false));
   }, [groupId, date]);
 
@@ -103,6 +139,7 @@ export default function LessonDetail() {
       );
       setSaved(true);
       setExistingLesson({ id: lessonId });
+      if (lessonId) localStorage.setItem(`lesson_${groupId}_${date}`, String(lessonId));
     } catch (err) {
       setSaveError(err.message ?? "Xatolik yuz berdi");
     } finally {

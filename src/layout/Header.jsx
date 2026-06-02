@@ -286,7 +286,9 @@ export default function Header({ setMobileOpen }) {
 
         {/* Avatar */}
         <div className="w-9 h-9 rounded-full bg-violet-600 flex items-center justify-center cursor-pointer hover:ring-2 hover:ring-violet-300 transition-all shadow">
-          <span className="text-white text-xs font-bold">C</span>
+          <span className="text-white text-xs font-bold uppercase">
+            {(localStorage.getItem("user_name") ?? "C")[0]}
+          </span>
         </div>
       </div>
     </header>

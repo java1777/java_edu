@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { groupsApi } from "../api/groups";
+import { lessonsApi } from "../api/lessons";
 import { homeworkApi } from "../api/homework";
 
 // ── Rich text editor toolbar commands ────────────────────────────────────────
@@ -144,11 +144,22 @@ export default function HomeworkCreate() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Default: hozir + 36 soat
+  const [deadline, setDeadline] = useState(() => {
+    const d = new Date(Date.now() + 36 * 60 * 60 * 1000);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const hh = String(d.getHours()).padStart(2, "0");
+    const min = String(d.getMinutes()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  });
+
   const fileRef = useRef(null);
 
-  // GET /groups/{groupId}/lesson — dars mavzulari uchun
+  // GET /lessons/my/group/{groupId} — barcha darslar
   useEffect(() => {
-    groupsApi.getLesson(groupId)
+    lessonsApi.getByGroup(groupId)
       .then((res) => setLessons(normalizeList(res)))
       .catch(() => setLessons([]))
       .finally(() => setLessonsLoading(false));
@@ -172,7 +183,8 @@ export default function HomeworkCreate() {
       body.append("lesson_id", Number(lessonId));
       body.append("group_id", Number(groupId));
       body.append("title", title.trim());
-      body.append("file", file);
+      body.append("deadline", deadline);
+      if (file) body.append("file", file);
       await homeworkApi.create(body);
       navigate(`/dashboard/groups/${groupId}?tab=1`);
     } catch (err) {
@@ -272,6 +284,19 @@ export default function HomeworkCreate() {
             type="file"
             onChange={(e) => { if (e.target.files[0]) setFile(e.target.files[0]); }}
             className="hidden"
+          />
+        </div>
+
+        {/* Tugash vaqti — default 36 soat */}
+        <div>
+          <label className="block text-[13px] font-bold text-gray-700 mb-2">
+            Tugash vaqti <span className="text-[11px] text-gray-400 font-normal">(default: 36 soat)</span>
+          </label>
+          <input
+            type="datetime-local"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] text-gray-700 outline-none focus:border-violet-400 transition-colors"
           />
         </div>
 

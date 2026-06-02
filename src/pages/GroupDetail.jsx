@@ -6,6 +6,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { groupsApi } from "../api/groups";
+import { lessonsApi } from "../api/lessons";
+import { getToken } from "../hooks/useAuth";
 import { attendanceApi } from "../api/attendance";
 import { homeworkApi } from "../api/homework";
 import { filesApi } from "../api/files";
@@ -114,11 +116,12 @@ function LessonCalendar({ lessonDays, groupId }) {
     const { dateStr, date: entryDate, isCompleted } = entry;
     const isHighlighted = dateStr === nextLessonStr;
     const isPast = isCompleted || entryDate < todayZero;
-    const isFuture = !isCompleted && entryDate > todayZero && !isHighlighted;
+    // Faqat bugun yoki o'tgan kunlarga kirish mumkin
+    const canNavigate = entryDate <= todayZero;
     return (
       <div
         onClick={() => {
-          if (isFuture) { setAlert(true); setTimeout(() => setAlert(false), 3000); }
+          if (!canNavigate) { setAlert(true); setTimeout(() => setAlert(false), 3000); }
           else navigate(`/dashboard/groups/${groupId}/lesson/${dateStr}`);
         }}
         className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border transition-colors cursor-pointer
@@ -245,7 +248,10 @@ export default function GroupDetail() {
   const [videoDragging, setVideoDragging] = useState(false);
   const [videoUploading, setVideoUploading] = useState(false);
   const [videoError, setVideoError] = useState("");
-  const [previewVideo, setPreviewVideo] = useState(null); // {url, name, size, lessonName, date}
+  const [previewVideo, setPreviewVideo] = useState(null);
+  const [videoBlobUrl, setVideoBlobUrl] = useState(null);
+  const [videoLoadError, setVideoLoadError] = useState(false);
+  const [toast, setToast] = useState(null);
   const [homework, setHomework] = useState([]);
   const [homeworkLoading, setHomeworkLoading] = useState(false);
   const [students, setStudents] = useState([]);
@@ -333,7 +339,7 @@ export default function GroupDetail() {
     if (activeTab !== 1) return;
 
     setLessonsLoading(true);
-    groupsApi.getLesson(id)
+    lessonsApi.getByGroup(id)
       .then((res) => setLessons(Array.isArray(res) ? res : (res?.data ?? res?.lessons ?? [])))
       .catch(() => setLessons([]))
       .finally(() => setLessonsLoading(false));
@@ -341,7 +347,7 @@ export default function GroupDetail() {
     setHomeworkLoading(true);
     homeworkApi.getByGroup(id)
       .then(async (res) => {
-        const list = Array.isArray(res) ? res : (res?.data ?? res?.homeworks ?? []);
+        const list = Array.isArray(res) ? res : (res?.data ?? res?.homeworks ?? res?.homework ?? []);
         // Har bir homework uchun results fetch qilish
         const withResults = await Promise.all(
           list.map(async (hw) => {
@@ -401,6 +407,8 @@ export default function GroupDetail() {
       setVideoRows([]);
       const res = await filesApi.getByGroup(id);
       setVideos(Array.isArray(res) ? res : (res?.data ?? res?.files ?? []));
+      setToast(`${videoRows.length} ta video muvaffaqiyatli yuklandi!`);
+      setTimeout(() => setToast(null), 4000);
     } catch (err) {
       setVideoError(err.message ?? "Xatolik yuz berdi");
     } finally {
@@ -673,7 +681,7 @@ export default function GroupDetail() {
               }}
               className="bg-green-500 hover:bg-green-600 text-white text-[13px] font-semibold px-4 py-1.5 rounded-xl transition-colors cursor-pointer"
             >
-              Qo'shish
+              {subTab === 2 ? "Yangi imtihon" : "Qo'shish"}
             </button>
           </div>
 
@@ -700,20 +708,25 @@ export default function GroupDetail() {
                 </thead>
                 <tbody>
                   {homework.map((hw, i) => {
-                    const results = Array.isArray(hw.results) ? hw.results : [];
-                    const total = hw.student_count ?? hw.StudentsCount ?? results.length ?? 0;
-                    const checked = results.filter((r) =>
-                      r.status === "CHECKED" || r.status === "ACCEPTED"
-                    ).length;
-                    const pending = results.filter((r) => r.status === "PENDING").length;
-                    const givenDate = hw.created_at ?? hw.given_at ?? hw.createdAt;
-                    const deadlineDate = hw.deadline ?? hw.due_date ?? hw.dueDate;
-                    const lessonDate = hw.lesson?.date ?? hw.Lesson?.date ?? hw.lesson_date;
+                    // API qaytargan to'g'ri field nomlar
+                    const total   = hw.existStudentsIngroup ?? hw.student_count ?? 0;
+                    const pending = hw.homeworkPending ?? 0;
+                    const checked = hw.homeworkAccept ?? 0;
+                    const givenDate = hw.created_at ?? hw.createdAt;
+                    // Tugash vaqti: backend qaytarsa ishlatamiz, bo'lmasa created_at + 36 soat
+                    const deadlineRaw = hw.deadline ?? hw.due_date ?? null;
+                    const deadlineDate = deadlineRaw
+                      ? deadlineRaw
+                      : givenDate
+                      ? new Date(new Date(givenDate).getTime() + 36 * 60 * 60 * 1000).toISOString()
+                      : null;
+                    // Dars sanasi: lesson date yoki hw.created_at
+                    const lessonDate = hw.lesson?.date ?? hw.lesson?.created_at ?? hw.lesson_date ?? givenDate;
                     return (
-                      <tr key={hw.id ?? i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
+                      <tr key={`${hw.id ?? i}-${i}`} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
                         <td className="px-5 py-3 text-[13px] text-gray-500">{i + 1}</td>
                         <td className="px-5 py-3 text-[13px] font-semibold text-gray-800">
-                          {hw.title ?? hw.topic ?? "—"}
+                          {hw.topic ?? hw.title ?? "—"}
                         </td>
                         <td className="px-5 py-3 text-[13px] text-gray-600 text-center">{total}</td>
                         <td className="px-5 py-3 text-[13px] text-orange-500 text-center font-semibold">{pending}</td>
@@ -722,7 +735,10 @@ export default function GroupDetail() {
                         <td className="px-5 py-3 text-[13px] text-gray-600">{formatDateTime(deadlineDate)}</td>
                         <td className="px-5 py-3 text-[13px] text-gray-600">{formatDate(lessonDate)}</td>
                         <td className="px-5 py-3 text-right">
-                          <button className="text-gray-400 hover:text-gray-600 cursor-pointer text-lg leading-none">⋮</button>
+                          <button
+                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.id}/results`)}
+                            className="text-gray-400 hover:text-violet-600 cursor-pointer text-lg leading-none"
+                          >⋮</button>
                         </td>
                       </tr>
                     );
@@ -741,58 +757,68 @@ export default function GroupDetail() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Video nomi</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Dars nomi</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Status</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Dars sanasi</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Hajmi</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Qo'shilgan vaqt</th>
-                    <th className="px-5 py-3 w-8" />
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">#</th>
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">Video nomi</th>
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">Dars nomi</th>
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">Status</th>
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">Dars sanasi</th>
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">Hajmi</th>
+                    <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">Qo'shilgan vaqti</th>
+                    <th className="px-5 py-3.5 w-8" />
                   </tr>
                 </thead>
                 <tbody>
                   {videos.map((v, i) => {
-                    const fileName = v.name ?? v.filename ?? v.original_name ?? "Fayl";
-                    const lessonName = v.lesson?.topic ?? v.Lesson?.topic ?? v.lesson_name ?? "—";
-                    const lessonDate = v.lesson?.date ?? v.Lesson?.date ?? v.lesson_date;
-                    const fileSize = v.size
-                      ? v.size > 1024 * 1024
-                        ? `${(v.size / (1024 * 1024)).toFixed(2)} MB`
-                        : `${(v.size / 1024).toFixed(1)} KB`
-                      : "—";
-                    const uploadedAt = v.created_at ?? v.createdAt ?? v.uploaded_at;
+                    // Swagger bo'yicha to'g'ri field nomlar
+                    const fileName = v.originalname ?? v.original_name ?? v.name ?? v.filename ?? "Fayl";
+                    const videoUrlRaw = v.video_url ?? v.url ?? v.file_url ?? v.path ?? null;
+                    const videoUrl = videoUrlRaw
+                      ? videoUrlRaw.startsWith("http") ? videoUrlRaw : `${SERVER_ORIGIN}/media/${videoUrlRaw}`
+                      : null;
+                    const lessonName = v.lesson?.topic ?? v.lesson?.name ?? "—";
+                    const lessonDate = v.lesson?.created_at ?? v.lesson?.date ?? null;
+                    const fileSize = v.size_mb != null
+                      ? `${Number(v.size_mb).toFixed(2)} MB`
+                      : v.size ? `${(v.size / (1024 * 1024)).toFixed(2)} MB` : "—";
+                    const uploadedAt = v.created_at ?? v.createdAt;
+                    const statusLabel = v.status ?? "Tayyor";
                     return (
-                      <tr key={v.id ?? i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
-                        <td className="px-5 py-3 text-[13px] text-gray-500">{i + 1}</td>
-                        <td className="px-5 py-3">
+                      <tr key={v.id ?? i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-4 text-[13px] text-gray-500">{i + 1}</td>
+                        <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="text-blue-500 text-[18px]">▶</span>
+                            <div className="w-6 h-6 rounded-full border-2 border-teal-400 flex items-center justify-center shrink-0">
+                              <span className="text-teal-400 text-[10px] font-bold">▶</span>
+                            </div>
                             <button
-                              onClick={() => setPreviewVideo({
-                                url: v.url ?? v.file_url ?? v.path ?? null,
-                                name: fileName,
-                                size: fileSize,
-                                lessonName,
-                                date: formatDate(lessonDate),
-                              })}
-                              className="text-[13px] font-semibold text-blue-500 hover:underline cursor-pointer text-left"
+                              onClick={() => {
+                                setPreviewVideo({ url: videoUrl, name: fileName, size: fileSize, lessonName, date: formatDate(lessonDate) });
+                                setVideoBlobUrl(null);
+                                setVideoLoadError(false);
+                                if (videoUrl) {
+                                  fetch(videoUrl, { headers: { Authorization: `Bearer ${getToken()}` } })
+                                    .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+                                    .then((blob) => setVideoBlobUrl(URL.createObjectURL(blob)))
+                                    .catch(() => setVideoLoadError(true));
+                                }
+                              }}
+                              className="text-[13px] font-semibold text-teal-500 hover:underline cursor-pointer text-left"
                             >
                               {fileName}
                             </button>
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-[13px] text-gray-700">{lessonName}</td>
-                        <td className="px-5 py-3">
-                          <span className="text-[11px] font-semibold text-green-600 bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-full">
-                            {v.status ?? "Tayyor"}
+                        <td className="px-5 py-4 text-[13px] text-gray-700">{lessonName}</td>
+                        <td className="px-5 py-4">
+                          <span className="text-[12px] font-semibold text-green-700 bg-green-100 px-3 py-1 rounded-lg">
+                            {statusLabel}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600">{formatDate(lessonDate)}</td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600">{fileSize}</td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600">{formatDate(uploadedAt)}</td>
-                        <td className="px-5 py-3 text-right">
-                          <button className="text-gray-400 hover:text-gray-600 cursor-pointer text-lg leading-none">⋮</button>
+                        <td className="px-5 py-4 text-[13px] text-gray-600">{formatDate(lessonDate)}</td>
+                        <td className="px-5 py-4 text-[13px] text-gray-600">{fileSize}</td>
+                        <td className="px-5 py-4 text-[13px] text-gray-600">{formatDate(uploadedAt)}</td>
+                        <td className="px-5 py-4 text-right">
+                          <button className="text-gray-300 hover:text-gray-500 cursor-pointer text-xl leading-none font-bold">⋮</button>
                         </td>
                       </tr>
                     );
@@ -802,75 +828,70 @@ export default function GroupDetail() {
             )
           )}
           {subTab === 2 && (
-            <div>
-              {/* Yangi imtihon button */}
-              <div className="flex justify-end px-5 py-3 border-b border-gray-100">
-                <button className="bg-green-500 hover:bg-green-600 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer">
-                  Yangi imtihon
-                </button>
-              </div>
-
-              {examsLoading ? (
-                <p className="text-center text-[13px] text-gray-400 py-10">{t("common.loading")}</p>
-              ) : exams.length === 0 ? (
-                <p className="text-center text-[13px] text-gray-400 py-10">Imtihonlar yo'q</p>
-              ) : (
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Mavzu</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-center">👤</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-red-400 text-center">✕</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Status</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Dars vaqti</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Berilgan vaqt</th>
-                      <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">E'lon qilingan vaqti</th>
-                      <th className="px-5 py-3 w-8" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exams.map((ex, i) => {
-                      const isActive = ex.status === "ACTIVE" || ex.status === "Faol" || ex.isActive;
-                      const students = ex.student_count ?? ex.students_count ?? 0;
-                      const failed = ex.failed_count ?? ex.failed ?? 0;
-                      return (
-                        <tr key={ex.id ?? i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
-                          <td className="px-5 py-3.5 text-[13px] text-gray-500">{ex.id ?? i + 1}</td>
-                          <td className="px-5 py-3.5">
-                            <span className="text-[13px] font-semibold text-blue-500 cursor-pointer hover:underline">
-                              {ex.title ?? ex.topic ?? ex.name ?? "Examination"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-[13px] text-gray-700 text-center">{students}</td>
-                          <td className="px-5 py-3.5 text-[13px] text-red-500 text-center">{failed}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={`text-[12px] font-semibold px-3 py-0.5 rounded-full border
-                              ${isActive
-                                ? "text-green-600 border-green-300 bg-green-50"
-                                : "text-gray-500 border-gray-300 bg-gray-50"}`}>
-                              {isActive ? "Faol" : "Tugagan"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5 text-[13px] text-gray-600">
-                            {formatDateTime(ex.lesson_date ?? ex.date ?? ex.lesson?.date)}
-                          </td>
-                          <td className="px-5 py-3.5 text-[13px] text-gray-600">
-                            {formatDateTime(ex.created_at ?? ex.given_at)}
-                          </td>
-                          <td className="px-5 py-3.5 text-[13px] text-gray-600">
-                            {ex.announced_at ? formatDateTime(ex.announced_at) : "—"}
-                          </td>
-                          <td className="px-5 py-3.5 text-right">
-                            <button className="text-gray-400 hover:text-gray-600 cursor-pointer text-lg leading-none">⋮</button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
+            examsLoading ? (
+              <p className="text-center text-[13px] text-gray-400 py-10">{t("common.loading")}</p>
+            ) : exams.length === 0 ? (
+              <p className="text-center text-[13px] text-gray-400 py-10">Imtihonlar yo'q</p>
+            ) : (
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Mavzu</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-center">
+                      <span className="text-gray-400">👤</span>
+                    </th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-center">
+                      <span className="text-red-400">✕</span>
+                    </th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Status</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Dars vaqti</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Berilgan vaqt</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">E'lon qilingan vaqti</th>
+                    <th className="px-5 py-3 w-8" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {exams.map((ex, i) => {
+                    const isActive = ex.status === "ACTIVE" || ex.status === "Faol" || ex.isActive;
+                    const students = ex.student_count ?? ex.students_count ?? 0;
+                    const failed = ex.failed_count ?? ex.failed ?? 0;
+                    return (
+                      <tr key={ex.id ?? i} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
+                        <td className="px-5 py-4 text-[13px] text-gray-500">{ex.id ?? i + 1}</td>
+                        <td className="px-5 py-4">
+                          <span className="text-[13px] font-semibold text-blue-500 cursor-pointer hover:underline">
+                            {ex.title ?? ex.topic ?? ex.name ?? "Examination"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[13px] text-gray-700 text-center">{students}</td>
+                        <td className="px-5 py-4 text-[13px] text-gray-700 text-center">{failed}</td>
+                        <td className="px-5 py-4">
+                          <span className={`text-[12px] font-semibold px-3 py-1 rounded-full border
+                            ${isActive
+                              ? "text-green-600 border-green-400"
+                              : "text-gray-500 border-gray-300"}`}>
+                            {isActive ? "Faol" : "Tugagan"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[13px] text-gray-600 whitespace-pre-line">
+                          {formatDateTime(ex.lesson_date ?? ex.date ?? ex.lesson?.date)}
+                        </td>
+                        <td className="px-5 py-4 text-[13px] text-gray-600 whitespace-pre-line">
+                          {formatDateTime(ex.created_at ?? ex.given_at)}
+                        </td>
+                        <td className="px-5 py-4 text-[13px] text-gray-600 whitespace-pre-line">
+                          {ex.announced_at ? formatDateTime(ex.announced_at) : "-"}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button className="text-gray-400 hover:text-gray-600 cursor-pointer text-xl leading-none">⋮</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )
           )}
           {subTab === 3 && (
             lessonsLoading ? (
@@ -923,10 +944,13 @@ export default function GroupDetail() {
               <tbody>
                 {students.map((s, i) => {
                   const name = s.full_name ?? s.name ?? "—";
-                  const studentAtt = attendance.filter(
-                    (a) => a.student_id === s.id || a.Student?.id === s.id
-                  );
-                  const came = studentAtt.filter((a) => a.isPresent ?? a.is_attended).length;
+                  // Faqat shu guruh va shu o'quvchining davomati
+                  const studentAtt = attendance.filter((a) => {
+                    const sameStudent = a.student_id === s.id || a.Student?.id === s.id;
+                    const sameGroup = a.group_id === Number(id) || a.Group?.id === Number(id);
+                    return sameStudent && sameGroup;
+                  });
+                  const came = studentAtt.filter((a) => a.isPresent ?? a.is_attended ?? false).length;
                   const total = studentAtt.length;
                   const pct = total > 0 ? Math.round((came / total) * 100) : null;
                   return (
@@ -1071,59 +1095,86 @@ export default function GroupDetail() {
           </div>
         </div>
       )}
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-green-600 text-white text-[13px] font-semibold px-5 py-3 rounded-2xl shadow-xl animate-fade-in">
+          <span className="text-[16px]">✓</span>
+          <span>{toast}</span>
+          <button onClick={() => setToast(null)} className="ml-2 text-white/80 hover:text-white cursor-pointer font-bold">✕</button>
+        </div>
+      )}
+
       {/* Video preview modal */}
       {previewVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/80" onClick={() => setPreviewVideo(null)} />
-          <div className="relative bg-black rounded-2xl shadow-2xl w-full max-w-3xl mx-4 z-10 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/85" onClick={() => {
+            if (videoBlobUrl) URL.revokeObjectURL(videoBlobUrl);
+            setVideoBlobUrl(null);
+            setPreviewVideo(null);
+          }} />
+          <div className="relative bg-black rounded-2xl shadow-2xl w-full max-w-3xl z-10 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-3 bg-black">
-              <div className="flex items-center gap-2">
-                <span className="text-blue-400 text-[18px]">▶</span>
+            <div className="flex items-center justify-between px-5 py-3.5 bg-black border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-full border-2 border-teal-400 flex items-center justify-center shrink-0">
+                  <span className="text-teal-400 text-[10px] font-bold">▶</span>
+                </div>
                 <span className="text-[14px] font-semibold text-white">{previewVideo.name}</span>
               </div>
               <button
-                onClick={() => setPreviewVideo(null)}
-                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/20 cursor-pointer transition-colors"
+                onClick={() => {
+                  if (videoBlobUrl) URL.revokeObjectURL(videoBlobUrl);
+                  setVideoBlobUrl(null);
+                  setPreviewVideo(null);
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 cursor-pointer transition-colors text-white text-[20px]"
               >
-                <span className="text-white text-[18px] leading-none">×</span>
+                ✕
               </button>
             </div>
 
             {/* Video player */}
-            <div className="bg-black flex items-center justify-center" style={{ minHeight: 400 }}>
-              {previewVideo.url ? (
+            <div className="bg-black min-h-48 flex items-center justify-center">
+              {videoBlobUrl ? (
                 <video
-                  src={previewVideo.url}
+                  src={videoBlobUrl}
                   controls
                   autoPlay
-                  className="w-full max-h-125 object-contain"
+                  className="w-full max-h-[60vh] object-contain"
+                  onEnded={() => URL.revokeObjectURL(videoBlobUrl)}
                 />
-              ) : (
+              ) : videoLoadError ? (
                 <div className="flex flex-col items-center gap-3 py-16 text-gray-500">
-                  <span className="text-[48px]">▶</span>
-                  <p className="text-[13px]">Video URL mavjud emas</p>
+                  <span className="text-[48px]">⚠</span>
+                  <p className="text-[13px]">Video yuklanmadi — server faylni bermayapti</p>
+                  {previewVideo.url && (
+                    <a href={previewVideo.url} target="_blank" rel="noreferrer"
+                      className="text-[12px] text-teal-400 hover:underline mt-1">
+                      To'g'ridan-to'g'ri ochish →
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-16 text-gray-600">
+                  <div className="w-10 h-10 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-[13px]">Video yuklanmoqda...</p>
                 </div>
               )}
             </div>
 
             {/* Bottom info */}
-            <div className="flex items-center gap-6 px-5 py-3 bg-gray-900">
-              <span className="text-[13px] text-gray-300">
-                <span className="text-gray-500">Fayl: </span>
-                <span className="font-semibold text-white">{previewVideo.name}</span>
+            <div className="flex flex-wrap items-center gap-5 px-5 py-3.5 bg-gray-900 border-t border-white/10">
+              <span className="text-[13px] text-gray-400">
+                Fayl: <span className="font-bold text-white">{previewVideo.name}</span>
               </span>
-              <span className="text-[13px] text-gray-300">
-                <span className="text-gray-500">Hajmi: </span>
-                <span className="font-semibold text-white">{previewVideo.size}</span>
+              <span className="text-[13px] text-gray-400">
+                Hajmi: <span className="font-bold text-white">{previewVideo.size}</span>
               </span>
-              <span className="text-[13px] text-gray-300">
-                <span className="text-gray-500">Dars: </span>
-                <span className="font-semibold text-white">{previewVideo.lessonName}</span>
+              <span className="text-[13px] text-gray-400">
+                Dars: <span className="font-bold text-white">{previewVideo.lessonName}</span>
               </span>
-              <span className="text-[13px] text-gray-300">
-                <span className="text-gray-500">Sana: </span>
-                <span className="font-semibold text-white">{previewVideo.date}</span>
+              <span className="text-[13px] text-gray-400">
+                Sana: <span className="font-bold text-white">{previewVideo.date}</span>
               </span>
             </div>
           </div>

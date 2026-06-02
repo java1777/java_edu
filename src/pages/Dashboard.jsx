@@ -50,43 +50,19 @@ export default function Dashboard() {
   }, []);
 
   const CARDS = [
-    {
-      icon: <SchoolIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
-      label: "Faol talabalar",
-      value: stats.students,
-    },
-    {
-      icon: <GroupsIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
-      label: "Guruhlar",
-      value: stats.groups,
-    },
-    {
-      icon: <CreditCardIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
-      label: "Joriy oy to'lovlar",
-      value: stats.payments,
-    },
-    {
-      icon: <WarningAmberIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
-      label: "Qarzdorlar",
-      value: stats.debtors,
-    },
-    {
-      icon: <AcUnitIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
-      label: "Muzlatilganlar",
-      value: stats.frozen,
-    },
-    {
-      icon: <ArchiveIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
-      label: "Arxivdagilar",
-      value: stats.archived,
-    },
+    { icon: <SchoolIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.active_students", value: stats.students },
+    { icon: <GroupsIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.groups", value: stats.groups },
+    { icon: <CreditCardIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.payments_month", value: stats.payments },
+    { icon: <WarningAmberIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.debtors", value: stats.debtors },
+    { icon: <AcUnitIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.frozen", value: stats.frozen },
+    { icon: <ArchiveIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.archived", value: stats.archived },
   ];
 
   return (
     <>
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-gray-800 mb-0.5">
-          {t("dashboard.hello")}
+          Salom, {localStorage.getItem("user_name") || "foydalanuvchi"}!
         </h1>
         <p className="text-sm text-gray-400">{t("dashboard.welcome")}</p>
       </div>
@@ -103,7 +79,7 @@ export default function Dashboard() {
               {card.icon}
             </div>
             <span className="text-[12px] text-gray-400 font-medium text-center">
-              {card.label}
+              {t(card.labelKey)}
             </span>
             <span className="text-3xl font-extrabold text-gray-800">
               {card.value}

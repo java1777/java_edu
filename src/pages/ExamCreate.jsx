@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { groupsApi } from "../api/groups";
+import { lessonsApi } from "../api/lessons";
 import { examsApi } from "../api/exams";
 
 function normalizeList(res) {
@@ -81,7 +81,7 @@ export default function ExamCreate() {
   const fileRef = useRef(null);
 
   useEffect(() => {
-    groupsApi.getLesson(groupId)
+    lessonsApi.getByGroup(groupId)
       .then((res) => setLessons(normalizeList(res)))
       .catch(() => setLessons([]))
       .finally(() => setLessonsLoading(false));
