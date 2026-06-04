@@ -955,7 +955,7 @@ export default function GroupDetail() {
                         <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/80" : "text-gray-500"}`}>{i + 1}</td>
                         <td className="px-5 py-3">
                           <button
-                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.id}/results`)}
+                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
                             className={`text-[13px] font-semibold cursor-pointer text-left hover:underline ${
                               isOrange ? "text-white" : "text-blue-600"
                             }`}
@@ -971,7 +971,7 @@ export default function GroupDetail() {
                         <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDate(lessonDate)}</td>
                         <td className="px-5 py-3 text-right">
                           <button
-                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.id}/results`)}
+                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
                             className={`cursor-pointer text-lg leading-none ${isOrange ? "text-white/70 hover:text-white" : "text-gray-400 hover:text-violet-600"}`}
                           >⋮</button>
                         </td>

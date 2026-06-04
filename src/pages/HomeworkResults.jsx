@@ -43,15 +43,19 @@ export default function HomeworkResults() {
       .catch(() => {});
   }, [groupId, homeworkId]);
 
+  // CHECKED uchun status yubormaymiz — backend statussiz bajarilmaganlarni qaytaradi
+  function apiStatus(key) {
+    return key === "CHECKED" ? null : key;
+  }
+
   // Har bir tab uchun sonni bir vaqtda yuklaymiz
   useEffect(() => {
     TABS.forEach(({ key }) => {
-      homeworkApi.getResults(groupId, homeworkId, key)
+      homeworkApi.getResults(groupId, homeworkId, apiStatus(key))
         .then((res) => {
           const raw = res?.data?.students ?? res?.data ?? res?.students ?? (Array.isArray(res) ? res : []);
           const list = Array.isArray(raw) ? raw : [];
           setCounts((p) => ({ ...p, [key]: list.length }));
-          // PENDING tab ma'lumotlarini ham shu yerda saqlaymiz
           if (key === "PENDING") {
             setResults((p) => ({ ...p, PENDING: list }));
           }
@@ -65,7 +69,7 @@ export default function HomeworkResults() {
     if (results[key] !== undefined) return;
     setLoading(true);
     try {
-      const res = await homeworkApi.getResults(groupId, homeworkId, key);
+      const res = await homeworkApi.getResults(groupId, homeworkId, apiStatus(key));
       const raw = res?.data?.students ?? res?.data ?? res?.students ?? (Array.isArray(res) ? res : []);
       const list = Array.isArray(raw) ? raw : [];
       setResults((p) => ({ ...p, [key]: list }));
@@ -204,8 +208,6 @@ export default function HomeworkResults() {
               <tr className="border-b border-gray-100">
                 <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">O'quvchi ismi</th>
                 <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">Topshirilgan vaqti</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">Tekshirilgan vaqti</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">Ball</th>
                 <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">Harakatlar</th>
               </tr>
             </thead>
@@ -213,17 +215,10 @@ export default function HomeworkResults() {
               {list.map((r, i) => {
                 const name = r.student?.full_name ?? r.Student?.full_name ?? r.full_name ?? `#${i+1}`;
                 const studentId = r.student?.id ?? r.Student?.id ?? r.student_id;
-                const ball = r.grade ?? r.ball ?? r.score;
                 return (
                   <tr key={r.id ?? i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3.5 text-[13px] text-gray-800 font-medium">{name}</td>
                     <td className="px-5 py-3.5 text-[13px] text-gray-600">{fmt(r.created_at ?? r.submitted_at)}</td>
-                    <td className="px-5 py-3.5 text-[13px] text-gray-600">{fmt(r.updated_at ?? r.checked_at)}</td>
-                    <td className="px-5 py-3.5">
-                      {ball != null
-                        ? <span className="text-[13px] font-bold text-amber-500">⚡ {ball}</span>
-                        : <span className="text-gray-400 text-[13px]">—</span>}
-                    </td>
                     <td className="px-5 py-3.5 text-right pr-6">
                       <button
                         onClick={() => navigate(`/dashboard/groups/${groupId}/homework/${homeworkId}/student/${studentId}/review`)}

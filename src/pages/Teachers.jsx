@@ -736,38 +736,6 @@ export default function Teachers() {
             </div>
           </div>
 
-          {/* Gender */}
-          <div>
-            <label className="block text-[13px] font-semibold text-gray-700 mb-2">
-              {t("common.gender")}
-            </label>
-            <div className="flex gap-5">
-              {["Erkak", "Ayol"].map((g) => (
-                <label
-                  key={g}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <input
-                    type="radio"
-                    name="gender"
-                    value={g}
-                    checked={form.gender === g}
-                    onChange={() => {
-                      setForm((p) => ({ ...p, gender: g }));
-                      setErrors((p) => ({ ...p, gender: "" }));
-                    }}
-                    className="accent-violet-600"
-                  />
-                  <span className="text-[13px] text-gray-700">
-                    {g === "Erkak" ? t("common.male") : t("common.female")}
-                  </span>
-                </label>
-              ))}
-            </div>
-            {errors.gender && (
-              <p className="text-[11px] text-red-500 mt-1">{errors.gender}</p>
-            )}
-          </div>
 
           {/* Photo */}
           <div>

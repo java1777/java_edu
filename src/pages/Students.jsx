@@ -692,32 +692,6 @@ export default function Students() {
             />
           </div>
 
-          {/* Gender */}
-          <div>
-            <label className="block text-[13px] font-semibold text-gray-700 mb-2">
-              {t("common.gender")}
-            </label>
-            <div className="flex gap-5">
-              {["Erkak", "Ayol"].map((g) => (
-                <label
-                  key={g}
-                  className="flex items-center gap-2 cursor-pointer"
-                >
-                  <input
-                    type="radio"
-                    name="studentGender"
-                    value={g}
-                    checked={form.gender === g}
-                    onChange={() => setForm((p) => ({ ...p, gender: g }))}
-                    className="accent-violet-600"
-                  />
-                  <span className="text-[13px] text-gray-700">
-                    {g === "Erkak" ? t("common.male") : t("common.female")}
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
 
           {/* Address */}
           <div>
