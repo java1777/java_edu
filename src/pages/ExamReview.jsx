@@ -53,7 +53,7 @@ export default function ExamReview() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-6 px-4">
+    <div className="py-6 px-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-6">
         <button

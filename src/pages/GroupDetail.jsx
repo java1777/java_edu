@@ -20,7 +20,7 @@ function fixPhotoUrl(url) {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (url.startsWith("/")) return `${SERVER_ORIGIN}${url}`;
-  return `${SERVER_ORIGIN}/media/${url}`;
+  return `${SERVER_ORIGIN}/files/${url}`;
 }
 
 function getTeacherPhoto(tc) {
@@ -72,9 +72,8 @@ function getLessonYear(monthIdx, todayMonth, todayYear) {
   return todayYear;
 }
 
-function LessonCalendar({ lessonDays, groupId }) {
+function LessonCalendar({ lessonDays, groupId, onDaySelect }) {
   const { t } = useLanguage();
-  const navigate = useNavigate();
 
   const today = new Date();
   const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -122,7 +121,7 @@ function LessonCalendar({ lessonDays, groupId }) {
       <div
         onClick={() => {
           if (!canNavigate) { setAlert(true); setTimeout(() => setAlert(false), 3000); }
-          else navigate(`/dashboard/groups/${groupId}/lesson/${dateStr}`);
+          else onDaySelect(dateStr);
         }}
         className={`flex flex-col items-center justify-center w-14 h-14 rounded-2xl border transition-colors cursor-pointer
           ${isHighlighted ? "border-green-500 bg-green-500 shadow-md"
@@ -207,9 +206,200 @@ function LessonCalendar({ lessonDays, groupId }) {
           onClick={() => setShowAllMonths((p) => !p)}
           className="border border-gray-200 rounded-xl px-8 py-2.5 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
         >
-          {showAllMonths ? "Yig'ish" : t("gd.show_all")}
+          {showAllMonths ? "Yopish" : t("gd.show_all")}
         </button>
       </div>
+    </div>
+  );
+}
+
+// ─── Mock exam data (API qo'shilgunga qadar) ─────────────────────────────────
+const MOCK_EXAMS = [
+  { id: 4, title: "Examination", student_count: 16, failed_count: 0, isActive: false, lesson_date: "2026-02-26T09:30:00Z", created_at: "2026-02-26T09:28:00Z", announced_at: "2026-03-02T13:32:00Z" },
+  { id: 5, title: "Examination", student_count: 14, failed_count: 0, isActive: false, lesson_date: "2026-03-26T09:30:00Z", created_at: "2026-03-26T09:23:00Z", announced_at: "2026-03-30T14:34:00Z" },
+  { id: 6, title: "Examination", student_count: 12, failed_count: 0, isActive: false, lesson_date: "2026-04-24T09:30:00Z", created_at: "2026-04-24T09:25:00Z", announced_at: "2026-04-27T10:30:00Z" },
+  { id: 7, title: "Examination", student_count: 12, failed_count: 0, isActive: true,  lesson_date: "2026-05-22T09:30:00Z", created_at: "2026-05-22T09:28:00Z", announced_at: null },
+];
+
+// ─── Inline Lesson Component ─────────────────────────────────────────────────
+function LessonInline({ groupId, date, onClose }) {
+  const { t } = useLanguage();
+  const MONTHS = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"];
+
+  const [lessonType, setLessonType] = useState("plan");
+  const [topic, setTopic] = useState("");
+  const [description, setDescription] = useState("");
+  const [students, setStudents] = useState([]);
+  const [attendance, setAttendance] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [topicError, setTopicError] = useState("");
+  const [saveError, setSaveError] = useState("");
+
+  const displayDate = (() => {
+    if (!date) return "";
+    const [y, m, d] = date.split("-");
+    return `${Number(d)} ${MONTHS[Number(m) - 1]}, ${y}`;
+  })();
+
+  useEffect(() => {
+    setLoading(true);
+    setSaved(false); setTopic(""); setDescription(""); setTopicError(""); setSaveError("");
+    Promise.all([
+      groupsApi.getStudents(groupId).catch(() => null),
+      lessonsApi.getByGroup(groupId).catch(() => null),
+    ]).then(([studRes, lessonsRes]) => {
+      const studentList = Array.isArray(studRes) ? studRes : (studRes?.data ?? studRes?.students ?? []);
+      setStudents(studentList);
+      const lessonList = Array.isArray(lessonsRes) ? lessonsRes : (lessonsRes?.data ?? lessonsRes?.lessons ?? []);
+      const todayLesson = lessonList.find((l) => l.date === date || l.date?.startsWith(date) || l.created_at?.startsWith(date));
+      const attMap = {};
+      studentList.forEach((s) => { attMap[s.id] = false; });
+
+      if (todayLesson) {
+        setSaved(true);
+        setTopic(todayLesson.topic ?? todayLesson.title ?? "");
+        setDescription(todayLesson.description ?? "");
+
+        const attList = Array.isArray(todayLesson.attendance) && todayLesson.attendance.length > 0
+          ? todayLesson.attendance : null;
+
+        if (attList) {
+          attList.forEach((a) => { if (a.student_id != null) attMap[a.student_id] = a.is_attended ?? a.isPresent ?? false; });
+          setAttendance(attMap);
+        } else {
+          // Backend lesson.attendance bo'sh bo'lsa — API dan yuklash
+          attendanceApi.getAll()
+            .then((attRes) => {
+              const raw = Array.isArray(attRes) ? attRes
+                : Array.isArray(attRes?.data) ? attRes.data
+                : Array.isArray(attRes?.data?.attendances) ? attRes.data.attendances
+                : Array.isArray(attRes?.attendances) ? attRes.attendances
+                : [];
+              raw.filter((a) => Number(a.group_id) === Number(groupId) || a.Group?.id === Number(groupId))
+                .forEach((a) => {
+                  const sid = Number(a.student_id ?? a.Student?.id);
+                  if (sid) attMap[sid] = a.isPresent ?? a.is_attended ?? false;
+                });
+              setAttendance({ ...attMap });
+            })
+            .catch(() => setAttendance(attMap));
+        }
+      } else {
+        setAttendance(attMap);
+      }
+    }).finally(() => setLoading(false));
+  }, [groupId, date]);
+
+  async function handleSave() {
+    if (!topic.trim()) { setTopicError("Mavzu kiritilishi shart"); return; }
+    setTopicError(""); setSaveError(""); setSaving(true);
+    try {
+      await lessonsApi.create({ group_id: Number(groupId), topic: topic.trim(), description: description.trim() });
+      await Promise.all(Object.entries(attendance).map(([sid, came]) =>
+        attendanceApi.create({ group_id: Number(groupId), student_id: Number(sid), isPresent: came })
+      ));
+      setSaved(true);
+      if (typeof window !== "undefined") localStorage.setItem(`lesson_${groupId}_${date}`, "1");
+    } catch (err) {
+      setSaveError(err.message ?? "Xatolik yuz berdi");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 bg-white rounded-2xl border border-violet-200 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-3 bg-violet-50 border-b border-violet-100">
+        <span className="text-[14px] font-bold text-violet-700">Dars — {displayDate}</span>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 cursor-pointer text-[18px] leading-none font-bold">×</button>
+      </div>
+
+      {loading ? (
+        <div className="py-8 text-center text-[13px] text-gray-400">Yuklanmoqda...</div>
+      ) : (
+        <div className="px-5 py-4 flex flex-col gap-4">
+          {saveError && (
+            <div className="bg-red-50 text-red-600 text-[12px] px-3 py-2 rounded-xl flex items-center justify-between">
+              <span>⚠ {saveError}</span>
+              <button onClick={() => setSaveError("")} className="font-bold cursor-pointer">×</button>
+            </div>
+          )}
+
+          {/* Lesson type */}
+          <div className="flex items-center gap-5">
+            {["plan","other"].map((v) => (
+              <label key={v} className={`flex items-center gap-2 ${saved ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+                <input type="radio" name={`lt-${date}`} value={v} checked={lessonType === v}
+                  onChange={() => !saved && setLessonType(v)} disabled={saved}
+                  className="accent-violet-600 w-4 h-4" />
+                <span className={`text-[13px] ${v === "other" && lessonType === "other" ? "text-green-500 font-semibold" : "text-gray-600"}`}>
+                  {v === "plan" ? "O'quv reja bo'yicha" : "Boshqa"}
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {/* Topic */}
+          <div>
+            <label className="block text-[12px] font-semibold text-red-500 mb-1">* Mavzu</label>
+            <input type="text" value={topic}
+              onChange={(e) => { if (!saved) { setTopic(e.target.value); setTopicError(""); } }}
+              readOnly={saved} placeholder="Dars mavzusini kiriting"
+              className={`w-full border rounded-xl px-3 py-2 text-[13px] outline-none transition-colors
+                ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
+                  : topicError ? "border-red-400 bg-white" : "border-gray-200 focus:border-violet-400 bg-white"}`} />
+            {topicError && <p className="text-[11px] text-red-500 mt-0.5">{topicError}</p>}
+          </div>
+
+          {/* Description */}
+          <textarea value={description} onChange={(e) => { if (!saved) setDescription(e.target.value); }}
+            readOnly={saved} placeholder="Tavsif (ixtiyoriy)" rows={2}
+            className={`w-full border rounded-xl px-3 py-2 text-[13px] outline-none resize-none transition-colors
+              ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed" : "border-gray-200 focus:border-violet-400 bg-white"}`} />
+
+          {/* Students */}
+          {students.length > 0 && (
+            <div className="border border-gray-100 rounded-xl overflow-hidden">
+              <div className="grid grid-cols-[1fr_auto] px-4 py-2 bg-gray-50 border-b border-gray-100">
+                <span className="text-[11px] font-semibold text-gray-400">O'quvchi ismi</span>
+                <span className="text-[11px] font-semibold text-gray-400">Keldi</span>
+              </div>
+              {students.map((s, idx) => {
+                const name = s.full_name ?? s.name ?? "—";
+                const came = attendance[s.id] ?? false;
+                return (
+                  <div key={s.id} className="grid grid-cols-[1fr_auto] items-center px-4 py-2.5 border-b border-gray-50 last:border-0 hover:bg-gray-50">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                        <span className="text-violet-600 text-[11px] font-bold">{name[0]}</span>
+                      </div>
+                      <span className="text-[13px] text-gray-800">{name}</span>
+                    </div>
+                    <button onClick={() => !saved && setAttendance((p) => ({ ...p, [s.id]: !p[s.id] }))}
+                      disabled={saved} className={saved ? "cursor-not-allowed opacity-70" : "cursor-pointer"}>
+                      {came
+                        ? <div className="w-6 h-6 rounded-full bg-green-500 shadow-sm" />
+                        : <div className="w-10 h-5 rounded-full bg-gray-200 relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow" /></div>
+                      }
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Save button */}
+          <div className="flex justify-end">
+            <button onClick={handleSave} disabled={saving || saved}
+              className={`text-[13px] font-semibold px-5 py-2 rounded-xl transition-colors
+                ${saved ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"}`}>
+              {saving ? "Saqlanmoqda..." : saved ? "Dars allaqachon saqlangan" : "Saqlash"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -235,6 +425,21 @@ export default function GroupDetail() {
   const [lessonDays, setLessonDays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+
+  // URL: ?lesson=2026-06-03 — back tugmasi bosilganda avtomatik yopiladi
+  const selectedDate = searchParams.get("lesson") ?? null;
+
+  function openLesson(date) {
+    const p = new URLSearchParams(searchParams);
+    p.set("lesson", date);
+    setSearchParams(p);
+  }
+
+  function closeLesson() {
+    const p = new URLSearchParams(searchParams);
+    p.delete("lesson");
+    setSearchParams(p);
+  }
 
   const [lessons, setLessons] = useState([]);
   const [lessonsLoading, setLessonsLoading] = useState(false);
@@ -315,9 +520,14 @@ export default function GroupDetail() {
     examsApi.getByGroup(id)
       .then((res) => {
         const list = Array.isArray(res) ? res : (res?.data ?? res?.exams ?? []);
-        setExams(list);
+        // API yo'q bo'lsa mock data ko'rsatamiz
+        if (list.length === 0) {
+          setExams(MOCK_EXAMS);
+        } else {
+          setExams(list);
+        }
       })
-      .catch(() => setExams([]))
+      .catch(() => setExams(MOCK_EXAMS))
       .finally(() => setExamsLoading(false));
   }, [id, activeTab, subTab]);
 
@@ -648,7 +858,20 @@ export default function GroupDetail() {
                   </div>
                 )}
 
-                <LessonCalendar lessonDays={lessonDays} groupId={id} />
+                <LessonCalendar
+                  lessonDays={lessonDays}
+                  groupId={id}
+                  onDaySelect={(date) => date === selectedDate ? closeLesson() : openLesson(date)}
+                />
+
+                {/* Inline Lesson Detail */}
+                {selectedDate && (
+                  <LessonInline
+                    groupId={id}
+                    date={selectedDate}
+                    onClose={closeLesson}
+                  />
+                )}
               </>
             )}
           </div>
@@ -708,36 +931,48 @@ export default function GroupDetail() {
                 </thead>
                 <tbody>
                   {homework.map((hw, i) => {
-                    // API qaytargan to'g'ri field nomlar
                     const total   = hw.existStudentsIngroup ?? hw.student_count ?? 0;
                     const pending = hw.homeworkPending ?? 0;
                     const checked = hw.homeworkAccept ?? 0;
                     const givenDate = hw.created_at ?? hw.createdAt;
-                    // Tugash vaqti: backend qaytarsa ishlatamiz, bo'lmasa created_at + 36 soat
                     const deadlineRaw = hw.deadline ?? hw.due_date ?? null;
                     const deadlineDate = deadlineRaw
                       ? deadlineRaw
                       : givenDate
                       ? new Date(new Date(givenDate).getTime() + 36 * 60 * 60 * 1000).toISOString()
                       : null;
-                    // Dars sanasi: lesson date yoki hw.created_at
                     const lessonDate = hw.lesson?.date ?? hw.lesson?.created_at ?? hw.lesson_date ?? givenDate;
+                    const isOrange = pending > 0;
                     return (
-                      <tr key={`${hw.id ?? i}-${i}`} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
-                        <td className="px-5 py-3 text-[13px] text-gray-500">{i + 1}</td>
-                        <td className="px-5 py-3 text-[13px] font-semibold text-gray-800">
-                          {hw.topic ?? hw.title ?? "—"}
+                      <tr
+                        key={`${hw.id ?? i}-${i}`}
+                        className={`border-b last:border-b-0 transition-colors ${
+                          isOrange
+                            ? "bg-orange-500 hover:bg-orange-400 border-orange-400"
+                            : "hover:bg-gray-50 border-gray-50"
+                        }`}
+                      >
+                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/80" : "text-gray-500"}`}>{i + 1}</td>
+                        <td className="px-5 py-3">
+                          <button
+                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.id}/results`)}
+                            className={`text-[13px] font-semibold cursor-pointer text-left hover:underline ${
+                              isOrange ? "text-white" : "text-blue-600"
+                            }`}
+                          >
+                            {hw.topic ?? hw.title ?? "—"}
+                          </button>
                         </td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600 text-center">{total}</td>
-                        <td className="px-5 py-3 text-[13px] text-orange-500 text-center font-semibold">{pending}</td>
-                        <td className="px-5 py-3 text-[13px] text-green-600 text-center font-semibold">{checked}</td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600">{formatDateTime(givenDate)}</td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600">{formatDateTime(deadlineDate)}</td>
-                        <td className="px-5 py-3 text-[13px] text-gray-600">{formatDate(lessonDate)}</td>
+                        <td className={`px-5 py-3 text-[13px] text-center ${isOrange ? "text-white" : "text-gray-600"}`}>{total}</td>
+                        <td className={`px-5 py-3 text-[13px] text-center font-semibold ${isOrange ? "text-white" : "text-orange-500"}`}>{pending}</td>
+                        <td className={`px-5 py-3 text-[13px] text-center font-semibold ${isOrange ? "text-white" : "text-green-600"}`}>{checked}</td>
+                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDateTime(givenDate)}</td>
+                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDateTime(deadlineDate)}</td>
+                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDate(lessonDate)}</td>
                         <td className="px-5 py-3 text-right">
                           <button
                             onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.id}/results`)}
-                            className="text-gray-400 hover:text-violet-600 cursor-pointer text-lg leading-none"
+                            className={`cursor-pointer text-lg leading-none ${isOrange ? "text-white/70 hover:text-white" : "text-gray-400 hover:text-violet-600"}`}
                           >⋮</button>
                         </td>
                       </tr>
@@ -773,7 +1008,7 @@ export default function GroupDetail() {
                     const fileName = v.originalname ?? v.original_name ?? v.name ?? v.filename ?? "Fayl";
                     const videoUrlRaw = v.video_url ?? v.url ?? v.file_url ?? v.path ?? null;
                     const videoUrl = videoUrlRaw
-                      ? videoUrlRaw.startsWith("http") ? videoUrlRaw : `${SERVER_ORIGIN}/media/${videoUrlRaw}`
+                      ? videoUrlRaw.startsWith("http") ? videoUrlRaw : `${SERVER_ORIGIN}/files/files/${videoUrlRaw}`
                       : null;
                     const lessonName = v.lesson?.topic ?? v.lesson?.name ?? "—";
                     const lessonDate = v.lesson?.created_at ?? v.lesson?.date ?? null;

@@ -111,7 +111,7 @@ export default function ExamCreate() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-6 px-4">
+    <div className="py-6 px-4 w-1/2">
       <div className="flex items-center gap-3 mb-5">
         <button onClick={() => navigate(-1)}
           className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">

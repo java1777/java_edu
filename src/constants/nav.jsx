@@ -7,8 +7,6 @@ import TuneIcon from "@mui/icons-material/Tune";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import MeetingRoomIcon from "@mui/icons-material/MeetingRoom";
 import BadgeIcon from "@mui/icons-material/Badge";
-import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
-import SendIcon from "@mui/icons-material/Send";
 
 export const NAV_ITEMS = [
   {
@@ -67,18 +65,6 @@ export const BOSHQARISH_MENU = [
     labelKey: "nav.staff",
     label: "Hodimlar",
     path: "/dashboard/staff",
-  },
-  {
-    icon: <MonetizationOnIcon fontSize="small" />,
-    labelKey: "nav.coin",
-    label: "Coin",
-    path: "/dashboard/coins",
-  },
-  {
-    icon: <SendIcon fontSize="small" />,
-    labelKey: "nav.messages",
-    label: "Xabar Yuborish",
-    path: "/dashboard/messages",
   },
 ];
 

@@ -34,7 +34,10 @@ export default function Courses() {
   const location = useLocation();
   const { t } = useLanguage();
 
+  const [activeTab, setActiveTab] = useState(0); // 0=Kurslar, 1=Arxiv
   const [courses, setCourses] = useState([]);
+  const [archivedCourses, setArchivedCourses] = useState([]);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -172,15 +175,40 @@ export default function Courses() {
       {/* Card */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="text-[15px] font-bold text-gray-800">
-            {t("courses.title")}
-          </span>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
-          >
-            <span className="text-lg leading-none">+</span> {t("courses.add")}
-          </button>
+          <div className="flex items-center gap-2">
+            {[t("courses.title"), t("groups.tab_archive")].map((label, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setActiveTab(i);
+                  if (i === 1 && archivedCourses.length === 0) {
+                    setArchiveLoading(true);
+                    coursesApi.getArchive()
+                      .then((res) => {
+                        const list = Array.isArray(res) ? res : (res?.data ?? res?.courses ?? []);
+                        setArchivedCourses(list.map(toUiCourse));
+                      })
+                      .catch(() => {})
+                      .finally(() => setArchiveLoading(false));
+                  }
+                }}
+                className={`px-4 py-1.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer
+                  ${activeTab === i
+                    ? "bg-white border border-gray-200 shadow-sm text-gray-800"
+                    : "text-gray-400 hover:text-gray-600"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {activeTab === 0 && (
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+            >
+              <span className="text-lg leading-none">+</span> {t("courses.add")}
+            </button>
+          )}
         </div>
 
         {apiError && (
@@ -189,15 +217,60 @@ export default function Courses() {
           </div>
         )}
 
-        {loading ? (
+        {/* Arxiv tab */}
+        {activeTab === 1 && (
+          archiveLoading ? (
+            <div className="py-12 text-center text-sm text-gray-400">{t("common.loading")}</div>
+          ) : archivedCourses.length === 0 ? (
+            <div className="py-12 text-center text-sm text-gray-400">Arxivda kurslar yo'q</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
+              {archivedCourses.map((course) => (
+                <div key={course.id}
+                  className={`${course.color ?? "bg-gray-50"} opacity-75 rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3`}>
+                  <p className="text-[14px] font-bold text-gray-700">{course.title}</p>
+                  {course.description && (
+                    <p className="text-[12px] text-gray-500 line-clamp-2">{course.description}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2 mt-auto">
+                    {course.duration && (
+                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg text-gray-500">{course.duration}</span>
+                    )}
+                    {course.period && (
+                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg text-gray-500">{course.period}</span>
+                    )}
+                    {course.price && (
+                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg font-semibold text-gray-600">{course.price} so'm</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await coursesApi.update(course.id, { active: true });
+                        setArchivedCourses((p) => p.filter((c) => c.id !== course.id));
+                      } catch (err) {
+                        alert("Xatolik: " + (err.message ?? err));
+                      }
+                    }}
+                    className="text-[12px] font-semibold text-green-600 border border-green-300 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg cursor-pointer transition-colors w-full text-center mt-1"
+                  >
+                    ↩ Qaytarish
+                  </button>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+
+        {activeTab === 0 && loading ? (
           <div className="py-12 text-center text-sm text-gray-400">
             {t("common.loading")}
           </div>
-        ) : courses.length === 0 ? (
+        ) : activeTab === 0 && courses.length === 0 ? (
           <div className="py-12 text-center text-sm text-gray-400">
             {t("courses.empty")}
           </div>
-        ) : (
+        ) : activeTab === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
             {courses.map((course) => (
               <div
@@ -243,7 +316,7 @@ export default function Courses() {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Backdrop */}

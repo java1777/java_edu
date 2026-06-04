@@ -11,7 +11,7 @@ function fixPhotoUrl(url) {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (url.startsWith("/")) return `${SERVER_ORIGIN}${url}`;
-  return `${SERVER_ORIGIN}/media/${url}`;
+  return `${SERVER_ORIGIN}/files/${url}`;
 }
 
 function normalizeList(res, keys = []) {
@@ -87,16 +87,20 @@ export default function LessonDetail() {
           });
           setAttendance(attMap);
         } else {
-          // Attendance API dan yuklash
+          // Attendance API dan yuklash — swagger: GET /attendance/all
           attendanceApi.getAll()
             .then((attRes) => {
-              const allAtt = Array.isArray(attRes) ? attRes : (attRes?.data ?? []);
-              const groupAtt = allAtt.filter(
-                (a) => a.group_id === Number(groupId) || a.Group?.id === Number(groupId)
+              const raw = Array.isArray(attRes) ? attRes
+                : Array.isArray(attRes?.data) ? attRes.data
+                : Array.isArray(attRes?.data?.attendances) ? attRes.data.attendances
+                : Array.isArray(attRes?.attendances) ? attRes.attendances
+                : [];
+              const grouped = raw.filter(
+                (a) => Number(a.group_id) === Number(groupId) || a.Group?.id === Number(groupId)
               );
-              groupAtt.forEach((a) => {
-                const sid = a.student_id ?? a.Student?.id;
-                if (sid != null) attMap[sid] = a.isPresent ?? a.is_attended ?? false;
+              grouped.forEach((a) => {
+                const sid = Number(a.student_id ?? a.Student?.id);
+                if (sid) attMap[sid] = a.isPresent ?? a.is_attended ?? false;
               });
               setAttendance({ ...attMap });
             })
@@ -127,7 +131,7 @@ export default function LessonDetail() {
       });
       const lessonId = lessonRes?.data?.id ?? lessonRes?.id;
 
-      // POST /attendance → {group_id, student_id, isPresent} har bir o'quvchi uchun
+      // POST /attendance — swagger: {group_id, student_id, isPresent}
       await Promise.all(
         Object.entries(attendance).map(([studentId, came]) =>
           attendanceApi.create({
@@ -176,7 +180,7 @@ export default function LessonDetail() {
         </span>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-5 flex flex-col gap-4">
+      <div className="px-6 py-5 flex flex-col gap-4">
 
         {/* Save error */}
         {saveError && (

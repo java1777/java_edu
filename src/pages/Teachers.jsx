@@ -22,7 +22,7 @@ function fixPhotoUrl(url) {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (url.startsWith("/")) return `${SERVER_ORIGIN}${url}`;
-  return `${SERVER_ORIGIN}/media/${url}`;
+  return `${SERVER_ORIGIN}/files/${url}`;
 }
 
 function normalizeList(res) {

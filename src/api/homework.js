@@ -11,5 +11,5 @@ export const homeworkApi = {
   create:       (body)                                =>
     request("/homework", { method: "POST", body: body instanceof FormData ? body : JSON.stringify(body) }),
   check:        (groupId, homeworkId, body)           =>
-    request(`/group/${groupId}/homework/${homeworkId}/check`, { method: "POST", body: JSON.stringify(body) }),
+    request(`/group/${groupId}/homework/${homeworkId}/check`, { method: "POST", body: body instanceof FormData ? body : JSON.stringify(body) }),
 };

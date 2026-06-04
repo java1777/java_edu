@@ -99,7 +99,14 @@ export default function Groups() {
     try {
       const res = await groupsApi.getAll();
       const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
-      setGroups(list.map(toUiGroup));
+      const uiList = list.map(toUiGroup);
+      setGroups(uiList);
+      // Nofaol guruhlarni avtomatik faollashtirish
+      const inactive = uiList.filter((g) => !g.active);
+      if (inactive.length > 0) {
+        await Promise.all(inactive.map((g) => groupsApi.update(g.id, { active: true }).catch(() => {})));
+        setGroups(uiList.map((g) => ({ ...g, active: true })));
+      }
     } catch (err) {
       setApiError(err.message);
     } finally {
@@ -171,6 +178,7 @@ export default function Groups() {
       setGroups((p) => p.map((g) => (g.id === id ? { ...g, active: current.active } : g)));
     }
   }
+
 
   function openDrawer() {
     setForm(GROUP_EMPTY);
@@ -362,9 +370,9 @@ export default function Groups() {
                 </thead>
                 <tbody>
                   {archivedGroups.map((g) => (
-                    <tr key={g.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`/dashboard/groups/${g.id}`)}>
-                      <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">{g.name}</td>
+                    <tr key={g.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
+                      <td className="px-4 py-4 text-[13px] font-semibold text-gray-800 cursor-pointer"
+                        onClick={() => navigate(`/dashboard/groups/${g.id}`)}>{g.name}</td>
                       <td className="px-4 py-4 text-[13px] font-semibold text-violet-600">{g.course}</td>
                       <td className="px-4 py-4 text-[13px] text-gray-600">{g.duration}</td>
                       <td className="px-4 py-4">
@@ -374,6 +382,22 @@ export default function Groups() {
                       <td className="px-4 py-4 text-[13px] text-gray-600">{g.room}</td>
                       <td className="px-4 py-4 text-[13px] text-gray-600">{g.teacher}</td>
                       <td className="px-4 py-4 text-[13px] font-bold text-gray-800">{g.students}</td>
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await groupsApi.update(g.id, { active: true });
+                              setArchivedGroups((p) => p.filter((x) => x.id !== g.id));
+                            } catch (err) {
+                              alert("Xatolik: " + (err.message ?? err));
+                            }
+                          }}
+                          className="text-[12px] font-semibold text-green-600 border border-green-300 bg-green-50 hover:bg-green-100 px-3 py-1 rounded-lg cursor-pointer transition-colors"
+                        >
+                          Qaytarish
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

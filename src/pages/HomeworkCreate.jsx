@@ -195,7 +195,7 @@ export default function HomeworkCreate() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-6 px-4">
+    <div className="py-6 px-4 w-1/2">
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate(-1)}
