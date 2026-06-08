@@ -4,6 +4,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { groupsApi } from "../api/groups";
 import { lessonsApi } from "../api/lessons";
 import { attendanceApi } from "../api/attendance";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const SERVER_ORIGIN = "https://najot-edu.softwareengineer.uz";
 
@@ -26,6 +27,7 @@ const MONTHS = ["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","S
 export default function LessonDetail() {
   const { groupId, date } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [lessonType, setLessonType] = useState("plan");
   const [topic, setTopic] = useState("");
@@ -118,7 +120,7 @@ export default function LessonDetail() {
 
   // POST /lessons + POST /attendance (swagger bo'yicha)
   async function handleSave() {
-    if (!topic.trim()) { setTopicError("Mavzu kiritilishi shart"); return; }
+    if (!topic.trim()) { setTopicError(t("ld.topic_error")); return; }
     setTopicError("");
     setSaveError("");
     setSaving(true);
@@ -160,7 +162,7 @@ export default function LessonDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64 text-[13px] text-gray-400">
-        Yuklanmoqda...
+        {t("ld.loading")}
       </div>
     );
   }
@@ -196,14 +198,14 @@ export default function LessonDetail() {
             <input type="radio" name="lessonType" value="plan" checked={lessonType === "plan"}
               onChange={() => !saved && setLessonType("plan")} disabled={saved}
               className="accent-violet-600 w-4 h-4" />
-            <span className="text-[13px] text-gray-600">O'quv reja bo'yicha</span>
+            <span className="text-[13px] text-gray-600">{t("ld.plan")}</span>
           </label>
           <label className={`flex items-center gap-2 ${saved ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
             <input type="radio" name="lessonType" value="other" checked={lessonType === "other"}
               onChange={() => !saved && setLessonType("other")} disabled={saved}
               className="accent-violet-600 w-4 h-4" />
             <span className={`text-[13px] font-semibold ${lessonType === "other" ? "text-green-500" : "text-gray-600"}`}>
-              Boshqa
+              {t("ld.other")}
             </span>
           </label>
         </div>
@@ -216,7 +218,7 @@ export default function LessonDetail() {
             value={topic}
             onChange={(e) => { if (!saved) { setTopic(e.target.value); setTopicError(""); } }}
             readOnly={saved}
-            placeholder="Dars mavzusini kiriting"
+            placeholder={t("ld.topic_ph")}
             className={`w-full border rounded-xl px-4 py-2.5 text-[13px] outline-none transition-colors
               ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
                 : topicError ? "border-red-400 bg-white"
@@ -227,12 +229,12 @@ export default function LessonDetail() {
 
         {/* Description */}
         <div>
-          <label className="block text-[13px] font-semibold text-gray-600 mb-1">Tavsif (ixtiyoriy)</label>
+          <label className="block text-[13px] font-semibold text-gray-600 mb-1">{t("ld.desc_label")}</label>
           <textarea
             value={description}
             onChange={(e) => { if (!saved) setDescription(e.target.value); }}
             readOnly={saved}
-            placeholder="Dars haqida qo'shimcha ma'lumot..."
+            placeholder={t("ld.desc_ph")}
             rows={3}
             className={`w-full border rounded-xl px-4 py-2.5 text-[13px] outline-none transition-colors resize-none
               ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
@@ -246,15 +248,15 @@ export default function LessonDetail() {
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
-                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">O'quvchi ismi</th>
-                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-right pr-6">Keldi</th>
+                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">{t("ld.student_name")}</th>
+                <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-right pr-6">{t("ld.attended")}</th>
               </tr>
             </thead>
             <tbody>
               {students.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-5 py-10 text-center text-[13px] text-gray-400">
-                    O'quvchilar topilmadi
+                    {t("ld.no_students")}
                   </td>
                 </tr>
               ) : (
@@ -310,7 +312,7 @@ export default function LessonDetail() {
                 ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                 : "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"}`}
           >
-            {saving ? "Saqlanmoqda..." : saved ? "Dars allaqachon saqlangan" : "Saqlash"}
+            {saving ? t("ld.saving") : saved ? t("ld.saved") : t("ld.save")}
           </button>
         </div>
 

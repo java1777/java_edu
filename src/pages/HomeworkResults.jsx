@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { homeworkApi } from "../api/homework";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const MONTHS = ["Yan","Fev","Mar","Apr","May","Iyun","Iyul","Avg","Sen","Okt","Noy","Dek"];
 
@@ -11,15 +12,16 @@ function fmt(str) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
 }
 
-const TABS = [
-  { key: "PENDING",  label: "Kutayotganlar" },
-  { key: "REJECTED", label: "Qaytarilganlar" },
-  { key: "ACCEPTED", label: "Qabul qilinganlar" },
-  { key: "CHECKED",  label: "Bajarilmagan" },
-];
-
 export default function HomeworkResults() {
   const { groupId, homeworkId } = useParams();
+  const { t } = useLanguage();
+
+  const TABS = [
+    { key: "PENDING",  label: t("hr.tab_pending") },
+    { key: "REJECTED", label: t("hr.tab_rejected") },
+    { key: "ACCEPTED", label: t("hr.tab_accepted") },
+    { key: "CHECKED",  label: t("hr.tab_checked") },
+  ];
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState("PENDING");
@@ -37,7 +39,11 @@ export default function HomeworkResults() {
           : Array.isArray(res?.data?.homeworks) ? res.data.homeworks
           : Array.isArray(res?.homeworks) ? res.homeworks
           : [];
-        const hw = list.find((h) => String(h.id) === String(homeworkId));
+        // homeworkId = submission ID (hw.homework[0].id) yoki assignment ID (hw.id)
+        const hw = list.find((h) =>
+          String(h.id) === String(homeworkId) ||
+          (Array.isArray(h.homework) && h.homework.some((s) => String(s.id) === String(homeworkId)))
+        );
         if (hw) setHomework(hw);
       })
       .catch(() => {});
@@ -71,7 +77,25 @@ export default function HomeworkResults() {
     try {
       const res = await homeworkApi.getResults(groupId, homeworkId, apiStatus(key));
       const raw = res?.data?.students ?? res?.data ?? res?.students ?? (Array.isArray(res) ? res : []);
-      const list = Array.isArray(raw) ? raw : [];
+      let list = Array.isArray(raw) ? raw : [];
+
+      // ACCEPTED uchun har bir student'ning grade'ini getResult orqali olamiz
+      if (key === "ACCEPTED" && list.length > 0) {
+        const enriched = await Promise.all(
+          list.map(async (r) => {
+            try {
+              const detail = await homeworkApi.getResult(groupId, homeworkId, r.id);
+              const grade = detail?.data?.grade ?? detail?.data?.score ?? detail?.grade ?? detail?.score ?? null;
+              const checkedAt = detail?.data?.checked_at ?? detail?.data?.updated_at ?? detail?.checked_at ?? detail?.updated_at ?? null;
+              return { ...r, grade, checked_at: checkedAt };
+            } catch {
+              return r;
+            }
+          })
+        );
+        list = enriched;
+      }
+
       setResults((p) => ({ ...p, [key]: list }));
     } catch {
       setResults((p) => ({ ...p, [key]: [] }));
@@ -95,7 +119,7 @@ export default function HomeworkResults() {
           <ArrowBackIcon sx={{ fontSize: 20, color: "#374151" }} />
         </button>
         <h1 className="text-[20px] font-bold text-gray-800">
-          {homework?.topic ?? homework?.title ?? "Uyga vazifa"}
+          {homework?.topic ?? homework?.title ?? t("hr.homework")}
         </h1>
       </div>
 
@@ -103,14 +127,14 @@ export default function HomeworkResults() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4 mb-5 flex items-center justify-between">
         <div className="flex gap-12">
           <div>
-            <p className="text-[12px] text-gray-400 mb-1">Mavzu</p>
+            <p className="text-[12px] text-gray-400 mb-1">{t("hr.topic")}</p>
             <p className="text-[15px] font-bold text-gray-800">
               {homework?.topic ?? homework?.title ?? "—"}
             </p>
           </div>
           {(homework?.deadline ?? homework?.due_date) && (
             <div>
-              <p className="text-[12px] text-gray-400 mb-1">Tugash vaqti</p>
+              <p className="text-[12px] text-gray-400 mb-1">{t("hr.deadline")}</p>
               <p className="text-[14px] font-semibold text-gray-700">
                 {fmt(homework.deadline ?? homework.due_date)}
               </p>
@@ -118,7 +142,7 @@ export default function HomeworkResults() {
           )}
         </div>
         <button className="border border-gray-200 text-[13px] font-semibold text-gray-500 hover:bg-gray-50 px-4 py-1.5 rounded-lg cursor-pointer transition-colors">
-          E'lon qilish
+          {t("hr.announce")}
         </button>
       </div>
 
@@ -146,22 +170,30 @@ export default function HomeworkResults() {
       {/* Table */}
       <div className="bg-white rounded-b-2xl border border-t-0 border-gray-100 shadow-sm overflow-hidden">
         {loading ? (
-          <p className="text-center text-[13px] text-gray-400 py-10">Yuklanmoqda...</p>
+          <p className="text-center text-[13px] text-gray-400 py-10">{t("hr.loading")}</p>
         ) : list.length === 0 ? (
-          <p className="text-center text-[13px] text-gray-400 py-10">Ma'lumot yo'q</p>
+          <p className="text-center text-[13px] text-gray-400 py-10">{t("hr.no_data")}</p>
         ) : activeTab === "PENDING" ? (
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">O'quvchi ismi</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">Uyga vazifa jo'natilgan vaqt</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">{t("hr.student_name")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">{t("hr.submitted_at")}</th>
               </tr>
             </thead>
             <tbody>
               {list.map((r, i) => {
                 const name = r.student?.full_name ?? r.Student?.full_name ?? r.full_name ?? `#${i+1}`;
+                const answerId = r.id;
                 return (
-                  <tr key={r.id ?? i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={r.id ?? i}
+                    onClick={() => navigate(
+                      `/dashboard/groups/${groupId}/homework/${homeworkId}/student/${answerId}/review`,
+                      { state: { studentName: name, submittedAt: r.created_at ?? r.submitted_at, answerId, status: "PENDING" } }
+                    )}
+                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
                     <td className="px-5 py-3.5 text-[13px] text-gray-800">{name}</td>
                     <td className="px-5 py-3.5 text-[13px] text-gray-600 text-right pr-6">{fmt(r.created_at ?? r.submitted_at)}</td>
                   </tr>
@@ -174,16 +206,16 @@ export default function HomeworkResults() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">O'quvchi ismi</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">Topshirilgan vaqti</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">Tugash vaqti</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">Harakatlar</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">{t("hr.student_name")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">{t("hr.submitted_time")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">{t("hr.deadline_col")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">{t("hr.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {list.map((r, i) => {
                 const name = r.student?.full_name ?? r.Student?.full_name ?? r.full_name ?? `#${i+1}`;
-                const studentId = r.student?.id ?? r.Student?.id ?? r.student_id;
+                const studentId = r.student?.id ?? r.Student?.id ?? r.student_id ?? r.id;
                 const deadline = r.homework?.deadline ?? r.homework?.due_date ?? r.deadline ?? homework?.deadline ?? homework?.due_date ?? null;
                 return (
                   <tr key={r.id ?? i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
@@ -206,19 +238,25 @@ export default function HomeworkResults() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">O'quvchi ismi</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">Topshirilgan vaqti</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">Harakatlar</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">{t("hr.student_name")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">{t("hr.checked_time")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-teal-500">{t("hr.grade")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">{t("hr.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {list.map((r, i) => {
                 const name = r.student?.full_name ?? r.Student?.full_name ?? r.full_name ?? `#${i+1}`;
-                const studentId = r.student?.id ?? r.Student?.id ?? r.student_id;
+                const studentId = r.student?.id ?? r.Student?.id ?? r.student_id ?? r.id;
+                const grade = r.grade ?? r.score ?? r.ball ?? null;
+                const checkedAt = r.checked_at ?? r.reviewed_at ?? r.updated_at ?? r.created_at ?? null;
                 return (
                   <tr key={r.id ?? i} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-3.5 text-[13px] text-gray-800 font-medium">{name}</td>
-                    <td className="px-5 py-3.5 text-[13px] text-gray-600">{fmt(r.created_at ?? r.submitted_at)}</td>
+                    <td className="px-5 py-3.5 text-[13px] text-gray-600">{fmt(checkedAt)}</td>
+                    <td className="px-5 py-3.5 text-[13px] font-bold text-teal-600">
+                      {grade != null ? grade : "—"}
+                    </td>
                     <td className="px-5 py-3.5 text-right pr-6">
                       <button
                         onClick={() => navigate(`/dashboard/groups/${groupId}/homework/${homeworkId}/student/${studentId}/review`)}
@@ -236,8 +274,8 @@ export default function HomeworkResults() {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">O'quvchi ismi</th>
-                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">Tugash vaqti</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400">{t("hr.student_name")}</th>
+                <th className="px-5 py-3.5 text-[12px] font-semibold text-gray-400 text-right pr-6">{t("hr.deadline_col")}</th>
               </tr>
             </thead>
             <tbody>

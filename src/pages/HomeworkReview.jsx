@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { homeworkApi } from "../api/homework";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const SERVER_ORIGIN = "https://najot-edu.softwareengineer.uz";
 
@@ -19,19 +20,21 @@ function fixUrl(url) {
   return `${SERVER_ORIGIN}/files/${url}`;
 }
 
-const STATUS = {
-  PENDING:  { label: "Kutayabti",     cls: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  CHECKED:  { label: "Tekshirildi",   cls: "bg-blue-100 text-blue-700 border-blue-300" },
-  ACCEPTED: { label: "Qabul qilindi", cls: "bg-green-100 text-green-700 border-green-300" },
-  REJECTED: { label: "Rad etildi",    cls: "bg-red-100 text-red-700 border-red-300" },
-};
-
 export default function HomeworkReview() {
   const { groupId, homeworkId, studentId } = useParams();
   const navigate = useNavigate();
+  const { state } = useLocation();
+  const { t } = useLanguage();
+
+  const STATUS = {
+    PENDING:  { label: t("hrv.pending"),         cls: "bg-yellow-100 text-yellow-700 border-yellow-300" },
+    CHECKED:  { label: t("hrv.checked"),          cls: "bg-blue-100 text-blue-700 border-blue-300" },
+    ACCEPTED: { label: t("hrv.accepted"),         cls: "bg-green-100 text-green-700 border-green-300" },
+    REJECTED: { label: t("hrv.rejected_status"),  cls: "bg-red-100 text-red-700 border-red-300" },
+  };
 
   const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [checking, setChecking] = useState(false);
   const [grade, setGrade] = useState(60);
@@ -41,37 +44,39 @@ export default function HomeworkReview() {
   const [reviewFile, setReviewFile] = useState(null);
   const [reviewDragging, setReviewDragging] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    // GET /group/{groupId}/homework/{homeworkId}/result/{studentId}
-    homeworkApi.getResult(groupId, homeworkId, studentId)
-      .then((res) => setResult(res?.data ?? res))
-      .catch((err) => setError(err.message ?? "Ma'lumot topilmadi"))
-      .finally(() => setLoading(false));
-  }, [groupId, homeworkId, studentId]);
+  // state orqali kelgan ma'lumotlar (PENDING list dan)
+  const answerId   = state?.answerId   ?? Number(studentId);
+  const statusKey  = state?.status     ?? result?.status ?? "PENDING";
+  const studentName = state?.studentName ?? result?.student?.full_name ?? result?.full_name ?? `O'quvchi`;
+  const submittedAt = state?.submittedAt ?? result?.created_at;
 
   async function handleCheck() {
+    const sid = Number(state?.answerId ?? studentId ?? 0);
+    if (!sid) {
+      setError("Student ID topilmadi — baholab bo'lmaydi.");
+      return;
+    }
     setChecking(true);
+    setError("");
     try {
-      // POST /group/{groupId}/homework/{homeworkId}/check
-      let body;
-      if (reviewFile) {
-        body = new FormData();
-        body.append("grade", Number(grade));
-        body.append("title", comment);
-        body.append("homework_answer_id", result?.id ?? result?.homework_answer_id ?? "");
-        body.append("file", reviewFile);
-      } else {
-        body = {
-          grade: Number(grade),
-          title: comment,
-          homework_answer_id: result?.id ?? result?.homework_answer_id,
-        };
+      // PENDING list da r.id = student user ID → getResult orqali real answer_id olamiz
+      let hwAnswerId = sid;
+      try {
+        const res = await homeworkApi.getResult(groupId, homeworkId, sid);
+        const found = res?.data?.id ?? res?.id;
+        if (found) hwAnswerId = Number(found);
+      } catch {
+        // getResult ishlamasa sid ni ishlatamiz
       }
-      await homeworkApi.check(groupId, homeworkId, body);
+
+      await homeworkApi.check(groupId, homeworkId, {
+        grade: Number(grade),
+        title: comment || " ",
+        homework_answer_id: hwAnswerId,
+      });
       setCheckDone(true);
     } catch (err) {
-      setError(err.message);
+      setError(err.message ?? "Baholashda xatolik yuz berdi.");
     } finally {
       setChecking(false);
     }
@@ -81,13 +86,10 @@ export default function HomeworkReview() {
     <div className="flex items-center justify-center h-64 text-gray-400 text-[13px]">Yuklanmoqda...</div>
   );
 
-  const statusKey = result?.status ?? "PENDING";
   const statusInfo = STATUS[statusKey] ?? STATUS.PENDING;
-  const studentName = result?.student?.full_name ?? result?.Student?.full_name ?? `O'quvchi #${studentId}`;
-  const submittedAt = result?.created_at ?? result?.submitted_at;
   const answerText = result?.title ?? result?.answer ?? result?.description ?? result?.text;
   const files = Array.isArray(result?.files) ? result.files : [];
-  const homeworkDesc = result?.homework?.description ?? result?.homework?.title ?? null;
+  const homeworkDesc = result?.homework?.description ?? result?.homework?.title ?? state?.homeworkTopic ?? null;
 
   const isImage = (f) => {
     const name = (f.name ?? f.filename ?? f.original_name ?? "").toLowerCase();
@@ -106,7 +108,7 @@ export default function HomeworkReview() {
           Kutayotganlar
         </span>
         <span className="text-gray-300">›</span>
-        <span className="text-[13px] text-teal-500 font-medium">Uyga vazifa</span>
+        <span className="text-[13px] text-teal-500 font-medium">{t("hrv.homework_task")}</span>
       </div>
 
       {error && (
@@ -114,20 +116,20 @@ export default function HomeworkReview() {
       )}
       {checkDone && (
         <div className="bg-green-50 text-green-700 text-[13px] font-semibold px-4 py-3 rounded-xl mb-4">
-          ✓ Muvaffaqiyatli baholandi!
+          ✓ {t("hrv.success")}
         </div>
       )}
 
       {/* Homework task */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-        <h2 className="text-[15px] font-bold text-gray-800 mb-3">Uy vazifasi</h2>
+        <h2 className="text-[15px] font-bold text-gray-800 mb-3">{t("hrv.homework_task")}</h2>
         {homeworkDesc ? (
           <>
             <p className="text-[13px] text-gray-400 mb-1">Izoh:</p>
             <p className="text-[14px] text-gray-700">{homeworkDesc}</p>
           </>
         ) : (
-          <p className="text-[13px] text-gray-400">Izoh yo'q</p>
+          <p className="text-[13px] text-gray-400">{t("hrv.no_comment")}</p>
         )}
       </div>
 
@@ -138,15 +140,15 @@ export default function HomeworkReview() {
         {/* Meta */}
         <div className="bg-white rounded-xl p-4 flex flex-wrap gap-6 mb-4 border border-gray-100">
           <div>
-            <p className="text-[12px] text-gray-400 mb-0.5">Vaqti:</p>
+            <p className="text-[12px] text-gray-400 mb-0.5">{t("hrv.time")}</p>
             <p className="text-[14px] font-bold text-gray-800">{fmt(submittedAt)}</p>
           </div>
           <div>
-            <p className="text-[12px] text-gray-400 mb-0.5">Fayllar soni:</p>
+            <p className="text-[12px] text-gray-400 mb-0.5">{t("hrv.files_count")}</p>
             <p className="text-[14px] font-bold text-gray-800">{files.length}</p>
           </div>
           <div>
-            <p className="text-[12px] text-gray-400 mb-0.5">Status:</p>
+            <p className="text-[12px] text-gray-400 mb-0.5">{t("hrv.status")}</p>
             <span className={`text-[12px] font-semibold px-3 py-1 rounded-lg border ${statusInfo.cls}`}>
               {statusInfo.label}
             </span>
@@ -196,40 +198,42 @@ export default function HomeworkReview() {
 
       {/* Grade section */}
       {!checkDone && statusKey === "PENDING" && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 text-blue-700 text-[13px] px-4 py-3 rounded-xl mb-5">
+        <>
+          {/* Info */}
+          <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 text-blue-700 text-[13px] px-4 py-3 rounded-xl mb-4">
             <span className="text-blue-500 text-[16px] mt-0.5 shrink-0">ℹ</span>
-            <span>60-100 oralig'ida ball qo'yilgan vazifa <b>'Qabul qilingan'</b>, 0-59 oralig'ida <b>'Qaytarilgan'</b> hisoblanadi.</span>
+            <span>{t("hrv.info_text")}</span>
           </div>
 
-          <div className="mb-5">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-[14px] font-bold text-gray-800">Ball</label>
+          {/* Ball card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+            <p className="text-[15px] font-bold text-gray-800 mb-4">{t("hrv.ball")}</p>
+            <div className="flex items-center gap-4 mb-2">
+              <input type="range" min="0" max="100" value={grade}
+                onChange={(e) => setGrade(Number(e.target.value))}
+                className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
+                style={{ background: `linear-gradient(to right, ${Number(grade) >= 60 ? "#10B981" : "#EF4444"} ${grade}%, #E5E7EB ${grade}%)` }} />
               <input type="number" min="0" max="100" value={grade}
                 onChange={(e) => setGrade(Math.min(100, Math.max(0, Number(e.target.value))))}
-                className="w-16 border border-gray-200 rounded-lg px-2 py-1 text-[13px] text-center outline-none focus:border-violet-400" />
+                className="w-16 border border-gray-200 rounded-xl px-2 py-1.5 text-[14px] font-bold text-center outline-none focus:border-teal-400" />
             </div>
-            <input type="range" min="0" max="100" value={grade}
-              onChange={(e) => setGrade(Number(e.target.value))}
-              className="w-full h-2 rounded-full appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, ${Number(grade) >= 60 ? "#10B981" : "#EF4444"} ${grade}%, #E5E7EB ${grade}%)` }} />
-            <div className="flex justify-between text-[11px] text-gray-400 mt-1">
-              <span>0</span>
-              <span className={`font-semibold ${Number(grade) >= 60 ? "text-green-600" : "text-red-500"}`}>O'tish bali: 60</span>
-              <span>100</span>
+            <p className="text-[12px] text-gray-400 text-center mb-4">{t("hrv.pass_mark")}</p>
+            <div className={`w-full py-3 rounded-xl text-[14px] font-semibold text-center
+              ${Number(grade) >= 60 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+              {Number(grade) >= 60 ? t("hrv.will_accept") : t("hrv.will_reject")}
             </div>
           </div>
 
-          {/* Fayllar upload */}
-          <div className="mb-5">
-            <p className="text-[14px] font-bold text-gray-800 mb-3">Fayllar</p>
+          {/* Fayllar card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
+            <p className="text-[15px] font-bold text-gray-800 mb-4">{t("hrv.files")}</p>
             <div
               onDragOver={(e) => { e.preventDefault(); setReviewDragging(true); }}
               onDragLeave={() => setReviewDragging(false)}
               onDrop={(e) => { e.preventDefault(); setReviewDragging(false); const f = e.dataTransfer.files[0]; if (f) setReviewFile(f); }}
               onClick={() => document.getElementById("review-file-inp").click()}
               className={`border-2 border-dashed rounded-2xl py-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors
-                ${reviewDragging ? "border-teal-400 bg-teal-50" : reviewFile ? "border-teal-400 bg-teal-50" : "border-teal-300 bg-gray-50 hover:border-teal-400"}`}
+                ${reviewDragging ? "border-teal-400 bg-teal-50" : reviewFile ? "border-teal-400 bg-teal-50" : "border-teal-300 hover:border-teal-400"}`}
             >
               {reviewFile ? (
                 <>
@@ -241,18 +245,14 @@ export default function HomeworkReview() {
                 </>
               ) : (
                 <>
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                      <path d="M24 8v24M16 16l8-8 8 8" stroke="#10B981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M8 36c0 2.2 1.8 4 4 4h24c2.2 0 4-1.8 4-4" stroke="#10B981" strokeWidth="3" strokeLinecap="round"/>
+                  <div className="w-14 h-14 rounded-2xl bg-teal-500 flex items-center justify-center">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4v12M8 8l4-4 4 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M4 18c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
                   </div>
-                  <p className="text-[14px] font-semibold text-gray-700 text-center px-6">
-                    Faylni yuklash uchun ushbu hudud ustiga bosing yoki faylni shu yerga olib keling
-                  </p>
-                  <p className="text-[12px] text-gray-400 text-center px-6">
-                    .jpg, .png, .pdf, .mp4, .docs formatlaridan birida bo'lishi mumkin
-                  </p>
+                  <p className="text-[14px] font-semibold text-gray-700 text-center px-6">{t("hrv.upload_hint")}</p>
+                  <p className="text-[12px] text-gray-400 text-center px-6">{t("hrv.upload_formats")}</p>
                 </>
               )}
               <input id="review-file-inp" type="file"
@@ -262,22 +262,31 @@ export default function HomeworkReview() {
             </div>
           </div>
 
-          {/* Izoh */}
-          <textarea placeholder="Izohingiz" value={comment} onChange={(e) => setComment(e.target.value)}
-            rows={3}
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-teal-400 resize-none mb-4" />
-
-          <div className="flex items-center justify-end gap-3">
-            <button onClick={() => navigate(-1)}
-              className="px-6 py-2.5 text-[13px] font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 cursor-pointer">
-              Bekor qilish
-            </button>
-            <button onClick={handleCheck} disabled={checking}
-              className="px-6 py-2.5 text-[13px] font-semibold text-white bg-green-500 hover:bg-green-600 disabled:opacity-60 rounded-xl cursor-pointer transition-colors">
-              {checking ? "Yuborilmoqda..." : "Yuborish"}
+          {/* Izoh card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 relative">
+            <textarea placeholder={t("hrv.comment")} value={comment} onChange={(e) => setComment(e.target.value)}
+              rows={4}
+              className="w-full text-[13px] outline-none resize-none text-gray-700 placeholder-gray-400" />
+            <button className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center shadow cursor-pointer hover:bg-teal-600 transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="white"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
             </button>
           </div>
-        </div>
+
+          {/* Buttons */}
+          <div className="flex items-center justify-end gap-3 pb-6">
+            <button onClick={() => navigate(-1)}
+              className="px-6 py-2.5 text-[13px] font-semibold text-gray-600 border border-gray-200 rounded-2xl hover:bg-gray-50 cursor-pointer">
+              {t("hrv.cancel")}
+            </button>
+            <button onClick={handleCheck} disabled={checking}
+              className="px-6 py-2.5 text-[13px] font-semibold text-white bg-teal-500 hover:bg-teal-600 disabled:opacity-60 rounded-2xl cursor-pointer transition-colors">
+              {checking ? t("hrv.submitting") : t("hrv.submit")}
+            </button>
+          </div>
+        </>
       )}
 
       {/* Image preview modal */}

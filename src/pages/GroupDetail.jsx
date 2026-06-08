@@ -293,7 +293,7 @@ function LessonInline({ groupId, date, onClose }) {
   }, [groupId, date]);
 
   async function handleSave() {
-    if (!topic.trim()) { setTopicError("Mavzu kiritilishi shart"); return; }
+    if (!topic.trim()) { setTopicError(t("gd.topic_required")); return; }
     setTopicError(""); setSaveError(""); setSaving(true);
     try {
       await lessonsApi.create({ group_id: Number(groupId), topic: topic.trim(), description: description.trim() });
@@ -343,10 +343,10 @@ function LessonInline({ groupId, date, onClose }) {
 
           {/* Topic */}
           <div>
-            <label className="block text-[12px] font-semibold text-red-500 mb-1">* Mavzu</label>
+            <label className="block text-[12px] font-semibold text-red-500 mb-1">* {t("gd.col_topic")}</label>
             <input type="text" value={topic}
               onChange={(e) => { if (!saved) { setTopic(e.target.value); setTopicError(""); } }}
-              readOnly={saved} placeholder="Dars mavzusini kiriting"
+              readOnly={saved} placeholder={t("gd.col_topic")}
               className={`w-full border rounded-xl px-3 py-2 text-[13px] outline-none transition-colors
                 ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
                   : topicError ? "border-red-400 bg-white" : "border-gray-200 focus:border-violet-400 bg-white"}`} />
@@ -883,8 +883,8 @@ export default function GroupDetail() {
           {/* Sub-tab header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div className="flex items-center gap-1">
-              <h2 className="text-[15px] font-bold text-gray-800 mr-4">Guruh darsliklari</h2>
-              {["Uyga vazifa", "Videolar", "Imtihonlar", "Jurnal"].map((label, i) => (
+              <h2 className="text-[15px] font-bold text-gray-800 mr-4">{t("gd.section_lessons")}</h2>
+              {[t("gd.subtab_hw"), t("gd.subtab_videos"), t("gd.subtab_exams"), t("gd.subtab_journal")].map((label, i) => (
                 <button
                   key={i}
                   onClick={() => setSubTab(i)}
@@ -904,7 +904,7 @@ export default function GroupDetail() {
               }}
               className="bg-green-500 hover:bg-green-600 text-white text-[13px] font-semibold px-4 py-1.5 rounded-xl transition-colors cursor-pointer"
             >
-              {subTab === 2 ? "Yangi imtihon" : "Qo'shish"}
+              {subTab === 2 ? t("gd.new_exam") : t("gd.add")}
             </button>
           </div>
 
@@ -913,20 +913,31 @@ export default function GroupDetail() {
             homeworkLoading ? (
               <p className="text-center text-[13px] text-gray-400 py-10">{t("common.loading")}</p>
             ) : homework.length === 0 ? (
-              <p className="text-center text-[13px] text-gray-400 py-10">Uyga vazifalar yo'q</p>
+              <p className="text-center text-[13px] text-gray-400 py-10">{t("gd.no_hw")}</p>
             ) : (
-              <table className="w-full text-left">
+              <table className="w-full text-left table-fixed">
+                <colgroup>
+                  <col style={{ width: "40px" }} />
+                  <col />
+                  <col style={{ width: "48px" }} />
+                  <col style={{ width: "48px" }} />
+                  <col style={{ width: "48px" }} />
+                  <col style={{ width: "140px" }} />
+                  <col style={{ width: "140px" }} />
+                  <col style={{ width: "120px" }} />
+                  <col style={{ width: "36px" }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Mavzu</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-center">👤</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-center">⏰</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-center">✅</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Berilgan vaqt</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Tugash vaqti</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Dars sanasi</th>
-                    <th className="px-5 py-3 w-8" />
+                    <th className="px-3 py-3 text-[12px] font-semibold text-gray-400">#</th>
+                    <th className="px-3 py-3 text-[12px] font-semibold text-gray-400">{t("gd.col_topic")}</th>
+                    <th className="py-3 text-[12px] font-semibold text-gray-400 text-center">👤</th>
+                    <th className="py-3 text-[12px] font-semibold text-orange-400 text-center">⏰</th>
+                    <th className="py-3 text-[12px] font-semibold text-green-500 text-center">✅</th>
+                    <th className="px-3 py-3 text-[12px] font-semibold text-gray-400 whitespace-nowrap">{t("gd.col_given")}</th>
+                    <th className="px-3 py-3 text-[12px] font-semibold text-gray-400 whitespace-nowrap">{t("gd.col_deadline")}</th>
+                    <th className="px-3 py-3 text-[12px] font-semibold text-gray-400 whitespace-nowrap">{t("gd.col_lesson_date")}</th>
+                    <th className="w-8" />
                   </tr>
                 </thead>
                 <tbody>
@@ -946,33 +957,31 @@ export default function GroupDetail() {
                     return (
                       <tr
                         key={`${hw.id ?? i}-${i}`}
-                        className={`border-b last:border-b-0 transition-colors ${
-                          isOrange
-                            ? "bg-orange-500 hover:bg-orange-400 border-orange-400"
-                            : "hover:bg-gray-50 border-gray-50"
-                        }`}
+                        className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors"
                       >
-                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/80" : "text-gray-500"}`}>{i + 1}</td>
-                        <td className="px-5 py-3">
+                        <td className="px-3 py-3 text-[13px] text-gray-500">{i + 1}</td>
+                        <td className="px-3 py-3">
                           <button
                             onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
-                            className={`text-[13px] font-semibold cursor-pointer text-left hover:underline ${
-                              isOrange ? "text-white" : "text-blue-600"
+                            className={`text-[13px] font-semibold cursor-pointer text-left w-full px-3 py-1.5 rounded-lg transition-colors truncate block ${
+                              isOrange
+                                ? "bg-orange-500 text-white hover:bg-orange-400"
+                                : "text-gray-800 hover:text-blue-600"
                             }`}
                           >
                             {hw.topic ?? hw.title ?? "—"}
                           </button>
                         </td>
-                        <td className={`px-5 py-3 text-[13px] text-center ${isOrange ? "text-white" : "text-gray-600"}`}>{total}</td>
-                        <td className={`px-5 py-3 text-[13px] text-center font-semibold ${isOrange ? "text-white" : "text-orange-500"}`}>{pending}</td>
-                        <td className={`px-5 py-3 text-[13px] text-center font-semibold ${isOrange ? "text-white" : "text-green-600"}`}>{checked}</td>
-                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDateTime(givenDate)}</td>
-                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDateTime(deadlineDate)}</td>
-                        <td className={`px-5 py-3 text-[13px] ${isOrange ? "text-white/90" : "text-gray-600"}`}>{formatDate(lessonDate)}</td>
-                        <td className="px-5 py-3 text-right">
+                        <td className="py-3 text-[13px] text-center text-gray-600">{total}</td>
+                        <td className="py-3 text-[13px] text-center font-semibold text-orange-500">{pending}</td>
+                        <td className="py-3 text-[13px] text-center font-semibold text-green-600">{checked}</td>
+                        <td className="px-3 py-3 text-[12px] text-gray-600 whitespace-nowrap">{formatDateTime(givenDate)}</td>
+                        <td className="px-3 py-3 text-[12px] text-gray-600 whitespace-nowrap">{formatDateTime(deadlineDate)}</td>
+                        <td className="px-3 py-3 text-[12px] text-gray-600 whitespace-nowrap">{formatDate(lessonDate)}</td>
+                        <td className="py-3 text-right pr-3">
                           <button
                             onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
-                            className={`cursor-pointer text-lg leading-none ${isOrange ? "text-white/70 hover:text-white" : "text-gray-400 hover:text-violet-600"}`}
+                            className="cursor-pointer text-lg leading-none text-gray-400 hover:text-violet-600"
                           >⋮</button>
                         </td>
                       </tr>
@@ -987,7 +996,7 @@ export default function GroupDetail() {
             videosLoading ? (
               <p className="text-center text-[13px] text-gray-400 py-10">{t("common.loading")}</p>
             ) : videos.length === 0 ? (
-              <p className="text-center text-[13px] text-gray-400 py-10">Videolar yo'q</p>
+              <p className="text-center text-[13px] text-gray-400 py-10">{t("gd.no_videos")}</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
@@ -1066,13 +1075,13 @@ export default function GroupDetail() {
             examsLoading ? (
               <p className="text-center text-[13px] text-gray-400 py-10">{t("common.loading")}</p>
             ) : exams.length === 0 ? (
-              <p className="text-center text-[13px] text-gray-400 py-10">Imtihonlar yo'q</p>
+              <p className="text-center text-[13px] text-gray-400 py-10">{t("gd.no_exams")}</p>
             ) : (
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-gray-100">
                     <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">#</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Mavzu</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">{t("gd.col_topic")}</th>
                     <th className="px-5 py-3 text-[12px] font-semibold text-gray-400 text-center">
                       <span className="text-gray-400">👤</span>
                     </th>
@@ -1081,8 +1090,8 @@ export default function GroupDetail() {
                     </th>
                     <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Status</th>
                     <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Dars vaqti</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">Berilgan vaqt</th>
-                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">E'lon qilingan vaqti</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">{t("gd.col_given")}</th>
+                    <th className="px-5 py-3 text-[12px] font-semibold text-gray-400">{t("gd.col_given")}</th>
                     <th className="px-5 py-3 w-8" />
                   </tr>
                 </thead>
