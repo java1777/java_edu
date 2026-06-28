@@ -69,11 +69,53 @@ export default function HomeworkReview() {
   const [reviewFile, setReviewFile] = useState(null);
   const [reviewDragging, setReviewDragging] = useState(false);
 
+  // O'quvchi topshirig'ini yuklaymiz (fayl, izoh, status ko'rsatish + qayta baholash)
+  useEffect(() => {
+    const lessonId = state?.lessonId;
+    const sid = Number(state?.studentId ?? studentId ?? 0);
+    if (!lessonId || !sid) return;
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await homeworkApi.getStudentHomework(
+          groupId,
+          lessonId,
+          homeworkId,
+          sid,
+        );
+        if (!alive) return;
+        const d = res?.data ?? res;
+        setResult(d);
+        // Oldin qaytarilgan bo'lsa — o'sha ballni sliderga qo'yamiz.
+        // Ball data.homeworkResult.grade da turadi.
+        const hr = d?.homeworkResult ?? d?.result ?? {};
+        const prev =
+          hr.grade ??
+          hr.ball ??
+          hr.score ??
+          d?.ball ??
+          d?.grade ??
+          d?.score ??
+          state?.grade;
+        if (prev != null && !Number.isNaN(Number(prev))) setGrade(Number(prev));
+      } catch {
+        // ma'lumot kelmasa state'dagi bilan ishlaymiz
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [groupId, homeworkId, studentId, state]);
+
   // state orqali kelgan ma'lumotlar (PENDING list dan)
   const answerId = state?.answerId ?? Number(studentId);
   const statusKey = state?.status ?? result?.status ?? "PENDING";
   const studentName =
     state?.studentName ??
+    result?.students?.full_name ??
     result?.student?.full_name ??
     result?.full_name ??
     `O'quvchi`;
@@ -137,7 +179,13 @@ export default function HomeworkReview() {
   const statusInfo = STATUS[statusKey] ?? STATUS.PENDING;
   const answerText =
     result?.title ?? result?.answer ?? result?.description ?? result?.text;
-  const files = Array.isArray(result?.files) ? result.files : [];
+  const files = (
+    Array.isArray(result?.files)
+      ? result.files
+      : result?.file
+        ? [result.file]
+        : []
+  ).map((f) => (typeof f === "string" ? { filename: f, name: f } : f));
   const homeworkDesc =
     result?.homework?.description ??
     result?.homework?.title ??
@@ -150,7 +198,7 @@ export default function HomeworkReview() {
   };
 
   return (
-    <div className="py-6 px-4">
+    <div className="py-6 px-4 max-w-2xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-5">
         <button
@@ -289,7 +337,7 @@ export default function HomeworkReview() {
       </div>
 
       {/* Grade section */}
-      {!checkDone && statusKey === "PENDING" && (
+      {!checkDone && (statusKey === "PENDING" || statusKey === "REJECTED") && (
         <>
           {/* Info */}
           <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 text-blue-700 text-[13px] px-4 py-3 rounded-xl mb-4">

@@ -331,10 +331,26 @@ export default function HomeworkResults() {
                   homework?.deadline ??
                   homework?.due_date ??
                   null;
+                const goReview = () =>
+                  navigate(
+                    `${base}/groups/${groupId}/homework/${homeworkId}/student/${r.id}/review`,
+                    {
+                      state: {
+                        studentName: name,
+                        submittedAt: r.created_at ?? r.submitted_at,
+                        answerId: r.id,
+                        studentId,
+                        lessonId,
+                        grade: r.grade ?? r.score ?? r.ball ?? null,
+                        status: "REJECTED",
+                      },
+                    },
+                  );
                 return (
                   <tr
                     key={r.id ?? i}
-                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"
+                    onClick={goReview}
+                    className="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors cursor-pointer"
                   >
                     <td className="px-5 py-3.5 text-[13px] text-gray-800">
                       {name}
@@ -347,11 +363,10 @@ export default function HomeworkResults() {
                     </td>
                     <td className="px-5 py-3.5 text-right pr-6">
                       <button
-                        onClick={() =>
-                          navigate(
-                            `${base}/groups/${groupId}/homework/${homeworkId}/student/${studentId}/review`,
-                          )
-                        }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          goReview();
+                        }}
                         className="text-gray-400 hover:text-gray-700 cursor-pointer text-xl font-bold"
                       >
                         ⋮
