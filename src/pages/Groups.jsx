@@ -104,7 +104,11 @@ export default function Groups() {
       // Nofaol guruhlarni avtomatik faollashtirish
       const inactive = uiList.filter((g) => !g.active);
       if (inactive.length > 0) {
-        await Promise.all(inactive.map((g) => groupsApi.update(g.id, { active: true }).catch(() => {})));
+        await Promise.all(
+          inactive.map((g) =>
+            groupsApi.update(g.id, { active: true }).catch(() => {}),
+          ),
+        );
         setGroups(uiList.map((g) => ({ ...g, active: true })));
       }
     } catch (err) {
@@ -171,14 +175,17 @@ export default function Groups() {
     const current = groups.find((g) => g.id === id);
     if (!current) return;
     const newActive = !current.active;
-    setGroups((p) => p.map((g) => (g.id === id ? { ...g, active: newActive } : g)));
+    setGroups((p) =>
+      p.map((g) => (g.id === id ? { ...g, active: newActive } : g)),
+    );
     try {
       await groupsApi.update(id, { active: newActive });
     } catch {
-      setGroups((p) => p.map((g) => (g.id === id ? { ...g, active: current.active } : g)));
+      setGroups((p) =>
+        p.map((g) => (g.id === id ? { ...g, active: current.active } : g)),
+      );
     }
   }
-
 
   function openDrawer() {
     setForm(GROUP_EMPTY);
@@ -272,9 +279,12 @@ export default function Groups() {
             setActiveTab(1);
             if (archivedGroups.length === 0) {
               setArchiveLoading(true);
-              groupsApi.getArchive()
+              groupsApi
+                .getArchive()
                 .then((res) => {
-                  const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+                  const list = Array.isArray(res)
+                    ? res
+                    : (res?.data ?? res?.groups ?? []);
                   setArchivedGroups(list.map(toUiGroup));
                 })
                 .catch(() => setArchivedGroups([]))
@@ -351,44 +361,83 @@ export default function Groups() {
       {activeTab === 1 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {archiveLoading ? (
-            <p className="text-center text-[13px] text-gray-400 py-10">Yuklanmoqda...</p>
+            <p className="text-center text-[13px] text-gray-400 py-10">
+              Yuklanmoqda...
+            </p>
           ) : archivedGroups.length === 0 ? (
-            <p className="text-center text-[13px] text-gray-400 py-10">Arxivda guruhlar yo'q</p>
+            <p className="text-center text-[13px] text-gray-400 py-10">
+              Arxivda guruhlar yo'q
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-187.5">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_name")}</th>
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_course")}</th>
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_duration")}</th>
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_time")}</th>
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_room")}</th>
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_teacher")}</th>
-                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">{t("groups.col_students")}</th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_name")}
+                    </th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_course")}
+                    </th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_duration")}
+                    </th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_time")}
+                    </th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_room")}
+                    </th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_teacher")}
+                    </th>
+                    <th className="px-4 py-3 text-[12px] font-semibold text-gray-400">
+                      {t("groups.col_students")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {archivedGroups.map((g) => (
-                    <tr key={g.id} className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50">
-                      <td className="px-4 py-4 text-[13px] font-semibold text-gray-800 cursor-pointer"
-                        onClick={() => navigate(`/dashboard/groups/${g.id}`)}>{g.name}</td>
-                      <td className="px-4 py-4 text-[13px] font-semibold text-violet-600">{g.course}</td>
-                      <td className="px-4 py-4 text-[13px] text-gray-600">{g.duration}</td>
+                    <tr
+                      key={g.id}
+                      className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50"
+                    >
+                      <td
+                        className="px-4 py-4 text-[13px] font-semibold text-gray-800 cursor-pointer"
+                        onClick={() => navigate(`/dashboard/groups/${g.id}`)}
+                      >
+                        {g.name}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] font-semibold text-violet-600">
+                        {g.course}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {g.duration}
+                      </td>
                       <td className="px-4 py-4">
-                        <p className="text-[13px] font-semibold text-gray-800">{g.time}</p>
+                        <p className="text-[13px] font-semibold text-gray-800">
+                          {g.time}
+                        </p>
                         <p className="text-[11px] text-gray-400">{g.days}</p>
                       </td>
-                      <td className="px-4 py-4 text-[13px] text-gray-600">{g.room}</td>
-                      <td className="px-4 py-4 text-[13px] text-gray-600">{g.teacher}</td>
-                      <td className="px-4 py-4 text-[13px] font-bold text-gray-800">{g.students}</td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {g.room}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {g.teacher}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] font-bold text-gray-800">
+                        {g.students}
+                      </td>
                       <td className="px-4 py-4">
                         <button
                           onClick={async (e) => {
                             e.stopPropagation();
                             try {
                               await groupsApi.update(g.id, { active: true });
-                              setArchivedGroups((p) => p.filter((x) => x.id !== g.id));
+                              setArchivedGroups((p) =>
+                                p.filter((x) => x.id !== g.id),
+                              );
                             } catch (err) {
                               alert("Xatolik: " + (err.message ?? err));
                             }
@@ -408,131 +457,137 @@ export default function Groups() {
       )}
 
       {/* Table */}
-      {activeTab === 0 && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {apiError && (
-          <div className="px-5 py-3 bg-red-50 text-red-600 text-[13px] border-b border-red-100">
-            {apiError}
-          </div>
-        )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-187.5">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_status")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_name")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_course")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_duration")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_time")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_room")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_teacher")}
-                </th>
-                <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
-                  {t("groups.col_students")}
-                </th>
-                <th className="px-4 py-3">
-                  <RefreshIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="px-4 py-10 text-center text-[13px] text-gray-400"
-                  >
-                    {t("common.loading")}
-                  </td>
+      {activeTab === 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {apiError && (
+            <div className="px-5 py-3 bg-red-50 text-red-600 text-[13px] border-b border-red-100">
+              {apiError}
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-187.5">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_status")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_name")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_course")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_duration")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_time")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_room")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_teacher")}
+                  </th>
+                  <th className="px-4 py-3 text-[12px] font-semibold text-gray-500">
+                    {t("groups.col_students")}
+                  </th>
+                  <th className="px-4 py-3">
+                    <RefreshIcon sx={{ fontSize: 16, color: "#9CA3AF" }} />
+                  </th>
                 </tr>
-              ) : groups.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={9}
-                    className="px-4 py-10 text-center text-[13px] text-gray-400"
-                  >
-                    {t("groups.no_groups")}
-                  </td>
-                </tr>
-              ) : (
-                groups.map((g) => (
-                  <tr
-                    key={g.id}
-                    onClick={() => navigate(`/dashboard/groups/${g.id}`)}
-                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
-                  >
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleActive(g.id);
-                          }}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${g.active ? "bg-violet-500" : "bg-gray-300"}`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${g.active ? "translate-x-4.5" : "translate-x-0.5"}`}
-                          />
-                        </button>
-                        <span
-                          className={`text-[11px] font-bold ${g.active ? "text-green-500" : "text-gray-400"}`}
-                        >
-                          {g.active ? t("common.active") : t("common.inactive")}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
-                      {g.name}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className="text-[13px] font-semibold text-violet-600">
-                        {g.course}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-[13px] text-gray-600">
-                      {g.duration}
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="text-[13px] font-semibold text-gray-800">
-                        {g.time}
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        {g.days}
-                      </p>
-                    </td>
-                    <td className="px-4 py-4 text-[13px] text-gray-600">
-                      {g.room}
-                    </td>
-                    <td className="px-4 py-4 text-[13px] text-gray-600">
-                      {g.teacher}
-                    </td>
-                    <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
-                      {g.students}
-                    </td>
-                    <td className="px-4 py-4">
-                      <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                        <MoreVertIcon sx={{ fontSize: 18, color: "#9CA3AF" }} />
-                      </button>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-4 py-10 text-center text-[13px] text-gray-400"
+                    >
+                      {t("common.loading")}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : groups.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-4 py-10 text-center text-[13px] text-gray-400"
+                    >
+                      {t("groups.no_groups")}
+                    </td>
+                  </tr>
+                ) : (
+                  groups.map((g) => (
+                    <tr
+                      key={g.id}
+                      onClick={() => navigate(`/dashboard/groups/${g.id}`)}
+                      className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                    >
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleActive(g.id);
+                            }}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${g.active ? "bg-violet-500" : "bg-gray-300"}`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow ${g.active ? "translate-x-4.5" : "translate-x-0.5"}`}
+                            />
+                          </button>
+                          <span
+                            className={`text-[11px] font-bold ${g.active ? "text-green-500" : "text-gray-400"}`}
+                          >
+                            {g.active
+                              ? t("common.active")
+                              : t("common.inactive")}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
+                        {g.name}
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className="text-[13px] font-semibold text-violet-600">
+                          {g.course}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {g.duration}
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="text-[13px] font-semibold text-gray-800">
+                          {g.time}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {g.days}
+                        </p>
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {g.room}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600">
+                        {g.teacher}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] font-semibold text-gray-800">
+                        {g.students}
+                      </td>
+                      <td className="px-4 py-4">
+                        <button className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                          <MoreVertIcon
+                            sx={{ fontSize: 18, color: "#9CA3AF" }}
+                          />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>}
+      )}
 
       {/* Drawer backdrop */}
       <div
@@ -628,11 +683,19 @@ export default function Groups() {
                 setForm((p) => ({ ...p, room: roomId }));
                 setErrors((p) => ({ ...p, room: "" }));
                 if (roomId) {
-                  const selectedRoom = availableRooms.find((r) => String(r.id) === roomId);
-                  const busy = groups.filter((g) => {
-                    const gRoom = g.room ?? "";
-                    return selectedRoom && (gRoom === selectedRoom.name || gRoom.startsWith(selectedRoom.name));
-                  }).map((g) => ({ name: g.name, time: g.time, days: g.days }));
+                  const selectedRoom = availableRooms.find(
+                    (r) => String(r.id) === roomId,
+                  );
+                  const busy = groups
+                    .filter((g) => {
+                      const gRoom = g.room ?? "";
+                      return (
+                        selectedRoom &&
+                        (gRoom === selectedRoom.name ||
+                          gRoom.startsWith(selectedRoom.name))
+                      );
+                    })
+                    .map((g) => ({ name: g.name, time: g.time, days: g.days }));
                   setRoomSchedule(busy);
                 } else {
                   setRoomSchedule([]);
@@ -656,9 +719,14 @@ export default function Groups() {
                   🔴 Band vaqtlar:
                 </p>
                 {roomSchedule.map((s, i) => (
-                  <div key={i} className="flex items-center justify-between text-[11px] text-orange-700 py-0.5 border-b border-orange-100 last:border-0">
+                  <div
+                    key={i}
+                    className="flex items-center justify-between text-[11px] text-orange-700 py-0.5 border-b border-orange-100 last:border-0"
+                  >
                     <span className="font-semibold">{s.name}</span>
-                    <span>{s.days} — {s.time}</span>
+                    <span>
+                      {s.days} — {s.time}
+                    </span>
                   </div>
                 ))}
                 <p className="text-[11px] text-orange-500 mt-1.5">
@@ -744,7 +812,9 @@ export default function Groups() {
               min="1"
               placeholder="Masalan: 20"
               value={form.maxStudent}
-              onChange={(e) => setForm((p) => ({ ...p, maxStudent: e.target.value }))}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, maxStudent: e.target.value }))
+              }
               className="w-full border border-gray-200 focus:border-violet-400 rounded-xl px-3 py-2.5 text-[13px] outline-none transition-colors"
             />
           </div>

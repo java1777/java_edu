@@ -5,6 +5,7 @@ export const studentsApi = {
   getOne:         (id)                    => request(`/students/one/${id}`),
   getArchive:     ()                      => request("/students/archive"),
   getMyGroups:    ()                      => request("/students/my/groups"),
+  getOwnHomework: (lessonId)              => request(`/homework/own/${lessonId}`),
   create:         (body)                  => request("/students", { method: "POST", body: body instanceof FormData ? body : JSON.stringify(body) }),
   update:         (id, body)              => request(`/students/${id}`, { method: "PATCH", body: body instanceof FormData ? body : JSON.stringify(body) }),
   remove:         (id)                    => request(`/students/${id}`, { method: "DELETE" }),

@@ -692,7 +692,6 @@ export default function Students() {
             />
           </div>
 
-
           {/* Address */}
           <div>
             <label className="block text-[13px] font-semibold text-gray-700 mb-1.5">

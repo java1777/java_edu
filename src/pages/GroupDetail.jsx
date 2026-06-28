@@ -13,6 +13,7 @@ import { homeworkApi } from "../api/homework";
 import { filesApi } from "../api/files";
 import { examsApi } from "../api/exams";
 import { useLanguage } from "../contexts/LanguageContext";
+import { usePanelBase } from "../hooks/usePanelBase";
 
 const SERVER_ORIGIN = "https://najot-edu.softwareengineer.uz";
 
@@ -296,7 +297,7 @@ function LessonInline({ groupId, date, onClose }) {
     if (!topic.trim()) { setTopicError(t("gd.topic_required")); return; }
     setTopicError(""); setSaveError(""); setSaving(true);
     try {
-      await lessonsApi.create({ group_id: Number(groupId), topic: topic.trim(), description: description.trim() });
+      await lessonsApi.create({ group_id: Number(groupId), topic: topic.trim(), description: description.trim(), date });
       await Promise.all(Object.entries(attendance).map(([sid, came]) =>
         attendanceApi.create({ group_id: Number(groupId), student_id: Number(sid), isPresent: came })
       ));
@@ -409,6 +410,7 @@ export default function GroupDetail() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
+  const base = usePanelBase();
 
   const [activeTab, setActiveTab] = useState(() => {
     const tab = Number(searchParams.get("tab"));
@@ -639,7 +641,7 @@ export default function GroupDetail() {
       <div className="flex flex-col items-center justify-center h-64 text-gray-400">
         <p className="text-lg font-semibold">{t("gd.not_found")}</p>
         <button
-          onClick={() => navigate("/dashboard/groups")}
+          onClick={() => navigate(`${base}/groups`)}
           className="mt-3 text-violet-600 text-sm hover:underline cursor-pointer"
         >
           {t("gd.back_list")}
@@ -705,7 +707,7 @@ export default function GroupDetail() {
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate("/dashboard/groups")}
+            onClick={() => navigate(`${base}/groups`)}
             className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-200 transition-colors cursor-pointer"
           >
             <ArrowBackIcon sx={{ fontSize: 20, color: "#374151" }} />
@@ -897,9 +899,9 @@ export default function GroupDetail() {
             </div>
             <button
               onClick={() => {
-                if (subTab === 0) navigate(`/dashboard/groups/${id}/homework/create`);
+                if (subTab === 0) navigate(`${base}/groups/${id}/homework/create`);
                 else if (subTab === 1) setVideoModal(true);
-                else if (subTab === 2) navigate(`/dashboard/groups/${id}/exam/create`);
+                else if (subTab === 2) navigate(`${base}/groups/${id}/exam/create`);
                 // subTab === 3 (Jurnal) — alohida action kerak emas
               }}
               className="bg-green-500 hover:bg-green-600 text-white text-[13px] font-semibold px-4 py-1.5 rounded-xl transition-colors cursor-pointer"
@@ -962,7 +964,7 @@ export default function GroupDetail() {
                         <td className="px-3 py-3 text-[13px] text-gray-500">{i + 1}</td>
                         <td className="px-3 py-3">
                           <button
-                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
+                            onClick={() => navigate(`${base}/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
                             className={`text-[13px] font-semibold cursor-pointer text-left w-full px-3 py-1.5 rounded-lg transition-colors truncate block ${
                               isOrange
                                 ? "bg-orange-500 text-white hover:bg-orange-400"
@@ -980,7 +982,7 @@ export default function GroupDetail() {
                         <td className="px-3 py-3 text-[12px] text-gray-600 whitespace-nowrap">{formatDate(lessonDate)}</td>
                         <td className="py-3 text-right pr-3">
                           <button
-                            onClick={() => navigate(`/dashboard/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
+                            onClick={() => navigate(`${base}/groups/${id}/homework/${hw.homework?.[0]?.id ?? hw.id}/results`)}
                             className="cursor-pointer text-lg leading-none text-gray-400 hover:text-violet-600"
                           >⋮</button>
                         </td>

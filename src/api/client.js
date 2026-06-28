@@ -1,6 +1,9 @@
 import { getToken, removeToken } from "../hooks/useAuth";
 
-export const BASE_URL = "https://najot-edu.softwareengineer.uz/api/v1";
+// API manzili: lokal dev uchun .env.development.local ichidagi VITE_API_URL
+// ishlatiladi, bo'lmasa standart (remote) manzil.
+export const BASE_URL =
+  import.meta.env.VITE_API_URL || "https://najot-edu.softwareengineer.uz/api/v1";
 
 export async function request(path, options = {}) {
   const token = getToken();

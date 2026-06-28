@@ -75,13 +75,14 @@ export default function Sidebar({
               transition-all duration-150 cursor-pointer
               ${
                 item.path === "/settings"
-                  ? menuOpen || BOSHQARISH_MENU.some((m) => location.pathname === m.path)
+                  ? menuOpen ||
+                    BOSHQARISH_MENU.some((m) => location.pathname === m.path)
                     ? "bg-violet-600 text-white shadow-sm"
                     : "text-gray-500 hover:bg-violet-50 hover:text-violet-700"
-                  : !menuOpen && (
-                      location.pathname === item.path ||
-                      (item.path !== "/dashboard" && location.pathname.startsWith(item.path + "/"))
-                    )
+                  : !menuOpen &&
+                      (location.pathname === item.path ||
+                        (item.path !== "/dashboard" &&
+                          location.pathname.startsWith(item.path + "/")))
                     ? "bg-violet-600 text-white shadow-sm"
                     : "text-gray-500 hover:bg-violet-50 hover:text-violet-700"
               }

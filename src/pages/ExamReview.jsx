@@ -4,17 +4,36 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { examsApi } from "../api/exams";
 
 const STATUS_MAP = {
-  1: { label: "Kutayabti", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  2: { label: "Qabul qilindi", color: "bg-green-100 text-green-700 border-green-300" },
+  1: {
+    label: "Kutayabti",
+    color: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  },
+  2: {
+    label: "Qabul qilindi",
+    color: "bg-green-100 text-green-700 border-green-300",
+  },
   3: { label: "Rad etildi", color: "bg-red-100 text-red-700 border-red-300" },
 };
 
-const MONTHS = ["Yan","Fev","Mar","Apr","May","Iyun","Iyul","Avg","Sen","Okt","Noy","Dek"];
+const MONTHS = [
+  "Yan",
+  "Fev",
+  "Mar",
+  "Apr",
+  "May",
+  "Iyun",
+  "Iyul",
+  "Avg",
+  "Sen",
+  "Okt",
+  "Noy",
+  "Dek",
+];
 
 function formatDateTime(str) {
   if (!str) return "—";
   const d = new Date(str);
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${d.getFullYear()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function ExamReview() {
@@ -34,11 +53,15 @@ export default function ExamReview() {
     // GET /group/{groupId}/exams/{examId}/student/{studentId}/review — o'quvchi javobi
     Promise.all([
       examsApi.getOne(examId).catch(() => null),
-      examsApi.getStudentReview(groupId, examId, studentId, status).catch(() => null),
-    ]).then(([examRes, reviewRes]) => {
-      setExam(examRes?.data ?? examRes);
-      setReview(reviewRes?.data ?? reviewRes);
-    }).catch((err) => setError(err.message))
+      examsApi
+        .getStudentReview(groupId, examId, studentId, status)
+        .catch(() => null),
+    ])
+      .then(([examRes, reviewRes]) => {
+        setExam(examRes?.data ?? examRes);
+        setReview(reviewRes?.data ?? reviewRes);
+      })
+      .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [groupId, examId, studentId, status]);
 
@@ -75,13 +98,17 @@ export default function ExamReview() {
 
       {/* Imtihon vazifasi */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4">
-        <h2 className="text-[15px] font-bold text-gray-800 mb-3">Imtihon vazifasi</h2>
+        <h2 className="text-[15px] font-bold text-gray-800 mb-3">
+          Imtihon vazifasi
+        </h2>
         {exam ? (
           <>
             <p className="text-[13px] text-gray-500 mb-1">Imtihon izohi:</p>
             <div
               className="text-[13px] text-gray-700"
-              dangerouslySetInnerHTML={{ __html: exam.description ?? exam.title ?? "—" }}
+              dangerouslySetInnerHTML={{
+                __html: exam.description ?? exam.title ?? "—",
+              }}
             />
           </>
         ) : (
@@ -92,7 +119,9 @@ export default function ExamReview() {
       {/* O'quvchi javobi */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <h2 className="text-[15px] font-bold text-gray-800 mb-4">
-          {review?.student?.full_name ?? review?.studentName ?? `O'quvchi #${studentId}`}
+          {review?.student?.full_name ??
+            review?.studentName ??
+            `O'quvchi #${studentId}`}
         </h2>
 
         <div className="flex items-center gap-8 mb-4">
@@ -110,7 +139,9 @@ export default function ExamReview() {
           </div>
           <div>
             <p className="text-[12px] text-gray-400 mb-0.5">Status:</p>
-            <span className={`text-[12px] font-semibold px-3 py-1 rounded-lg border ${statusInfo.color}`}>
+            <span
+              className={`text-[12px] font-semibold px-3 py-1 rounded-lg border ${statusInfo.color}`}
+            >
               {statusInfo.label}
             </span>
           </div>

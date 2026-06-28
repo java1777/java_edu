@@ -4,6 +4,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { lessonsApi } from "../api/lessons";
 import { homeworkApi } from "../api/homework";
+import { usePanelBase } from "../hooks/usePanelBase";
 
 // ── Rich text editor toolbar commands ────────────────────────────────────────
 const FONT_FAMILIES = ["Sans Serif", "Serif", "Monospace"];
@@ -26,7 +27,14 @@ function RichEditor({ value, onChange }) {
 
   function applyFontFamily(f) {
     setFontFamily(f);
-    exec("fontName", f === "Sans Serif" ? "Arial, sans-serif" : f === "Serif" ? "Georgia, serif" : "monospace");
+    exec(
+      "fontName",
+      f === "Sans Serif"
+        ? "Arial, sans-serif"
+        : f === "Serif"
+          ? "Georgia, serif"
+          : "monospace",
+    );
   }
 
   function applyFontSize(s) {
@@ -38,7 +46,10 @@ function RichEditor({ value, onChange }) {
     <button
       type="button"
       title={title}
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
       className="w-7 h-7 flex items-center justify-center rounded hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer text-[13px] font-semibold"
     >
       {children}
@@ -51,8 +62,12 @@ function RichEditor({ value, onChange }) {
     <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-violet-400 transition-colors">
       {/* Toolbar */}
       <div className="flex items-center flex-wrap gap-0.5 px-3 py-2 border-b border-gray-100 bg-gray-50">
-        <ToolBtn onClick={() => exec("formatBlock", "h1")} title="H1">H1</ToolBtn>
-        <ToolBtn onClick={() => exec("formatBlock", "h2")} title="H2">H2</ToolBtn>
+        <ToolBtn onClick={() => exec("formatBlock", "h1")} title="H1">
+          H1
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("formatBlock", "h2")} title="H2">
+          H2
+        </ToolBtn>
         <Divider />
 
         {/* Font family */}
@@ -61,7 +76,9 @@ function RichEditor({ value, onChange }) {
           onChange={(e) => applyFontFamily(e.target.value)}
           className="h-7 px-2 text-[12px] text-gray-600 border border-gray-200 rounded bg-white cursor-pointer outline-none"
         >
-          {FONT_FAMILIES.map((f) => <option key={f}>{f}</option>)}
+          {FONT_FAMILIES.map((f) => (
+            <option key={f}>{f}</option>
+          ))}
         </select>
 
         {/* Font size */}
@@ -70,25 +87,60 @@ function RichEditor({ value, onChange }) {
           onChange={(e) => applyFontSize(e.target.value)}
           className="h-7 px-2 text-[12px] text-gray-600 border border-gray-200 rounded bg-white cursor-pointer outline-none ml-1"
         >
-          {FONT_SIZES.map((s) => <option key={s}>{s}</option>)}
+          {FONT_SIZES.map((s) => (
+            <option key={s}>{s}</option>
+          ))}
         </select>
 
         <Divider />
-        <ToolBtn onClick={() => exec("bold")} title="Bold"><b>B</b></ToolBtn>
-        <ToolBtn onClick={() => exec("italic")} title="Italic"><i>I</i></ToolBtn>
-        <ToolBtn onClick={() => exec("underline")} title="Underline"><u>U</u></ToolBtn>
-        <ToolBtn onClick={() => exec("strikeThrough")} title="Strikethrough"><s>S</s></ToolBtn>
+        <ToolBtn onClick={() => exec("bold")} title="Bold">
+          <b>B</b>
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("italic")} title="Italic">
+          <i>I</i>
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("underline")} title="Underline">
+          <u>U</u>
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("strikeThrough")} title="Strikethrough">
+          <s>S</s>
+        </ToolBtn>
         <Divider />
-        <ToolBtn onClick={() => exec("formatBlock", "blockquote")} title="Quote">❝</ToolBtn>
-        <ToolBtn onClick={() => exec("formatBlock", "pre")} title="Code">{"</>"}</ToolBtn>
+        <ToolBtn
+          onClick={() => exec("formatBlock", "blockquote")}
+          title="Quote"
+        >
+          ❝
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("formatBlock", "pre")} title="Code">
+          {"</>"}
+        </ToolBtn>
         <Divider />
-        <ToolBtn onClick={() => exec("insertUnorderedList")} title="Bullet list">≡</ToolBtn>
-        <ToolBtn onClick={() => exec("insertOrderedList")} title="Numbered list">№</ToolBtn>
+        <ToolBtn
+          onClick={() => exec("insertUnorderedList")}
+          title="Bullet list"
+        >
+          ≡
+        </ToolBtn>
+        <ToolBtn
+          onClick={() => exec("insertOrderedList")}
+          title="Numbered list"
+        >
+          №
+        </ToolBtn>
         <Divider />
-        <ToolBtn onClick={() => exec("justifyLeft")} title="Align left">⬜</ToolBtn>
-        <ToolBtn onClick={() => exec("justifyCenter")} title="Center">⬛</ToolBtn>
-        <ToolBtn onClick={() => exec("justifyRight")} title="Align right">⬜</ToolBtn>
-        <ToolBtn onClick={() => exec("justifyFull")} title="Justify">⬛</ToolBtn>
+        <ToolBtn onClick={() => exec("justifyLeft")} title="Align left">
+          ⬜
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("justifyCenter")} title="Center">
+          ⬛
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("justifyRight")} title="Align right">
+          ⬜
+        </ToolBtn>
+        <ToolBtn onClick={() => exec("justifyFull")} title="Justify">
+          ⬛
+        </ToolBtn>
         <Divider />
         <ToolBtn
           onClick={() => {
@@ -132,6 +184,7 @@ function normalizeList(res) {
 export default function HomeworkCreate() {
   const { groupId } = useParams();
   const navigate = useNavigate();
+  const base = usePanelBase();
 
   const [lessons, setLessons] = useState([]);
   const [lessonsLoading, setLessonsLoading] = useState(true);
@@ -159,7 +212,8 @@ export default function HomeworkCreate() {
 
   // GET /lessons/my/group/{groupId} — barcha darslar
   useEffect(() => {
-    lessonsApi.getByGroup(groupId)
+    lessonsApi
+      .getByGroup(groupId)
       .then((res) => setLessons(normalizeList(res)))
       .catch(() => setLessons([]))
       .finally(() => setLessonsLoading(false));
@@ -173,9 +227,22 @@ export default function HomeworkCreate() {
   }
 
   async function handleSubmit() {
-    if (!lessonId) { setError("Dars mavzusini tanlang"); return; }
-    if (!title.trim()) { setError("Sarlavha kiriting"); return; }
-    if (!file) { setError("Fayl yuklang"); return; }
+    if (!lessonId) {
+      setError("Dars mavzusini tanlang");
+      return;
+    }
+    if (!title.trim()) {
+      setError("Sarlavha kiriting");
+      return;
+    }
+    if (!description.trim()) {
+      setError("Izoh kiriting");
+      return;
+    }
+    if (!file) {
+      setError("Fayl yuklang");
+      return;
+    }
     setError("");
     setSaving(true);
     try {
@@ -183,10 +250,11 @@ export default function HomeworkCreate() {
       body.append("lesson_id", Number(lessonId));
       body.append("group_id", Number(groupId));
       body.append("title", title.trim());
+      body.append("description", description);
       body.append("deadline", deadline);
       if (file) body.append("file", file);
       await homeworkApi.create(body);
-      navigate(`/dashboard/groups/${groupId}?tab=1`);
+      navigate(`${base}/groups/${groupId}?tab=1`);
     } catch (err) {
       setError(err.message ?? "Xatolik yuz berdi");
     } finally {
@@ -203,7 +271,9 @@ export default function HomeworkCreate() {
         >
           <ArrowBackIcon sx={{ fontSize: 20, color: "#374151" }} />
         </button>
-        <h1 className="text-[20px] font-bold text-gray-800">Yangi uyga vazifa yaratish</h1>
+        <h1 className="text-[20px] font-bold text-gray-800">
+          Yangi uyga vazifa yaratish
+        </h1>
       </div>
 
       {error && (
@@ -215,13 +285,17 @@ export default function HomeworkCreate() {
       <div className="flex flex-col gap-5">
         {/* Mavzu — GET /groups/{groupId}/lesson */}
         <div>
-          <label className="block text-[13px] font-bold text-red-500 mb-2">* Mavzu</label>
+          <label className="block text-[13px] font-bold text-red-500 mb-2">
+            * Mavzu
+          </label>
           <div className="relative">
             <select
               value={lessonId}
               onChange={(e) => {
                 setLessonId(e.target.value);
-                const found = lessons.find((l) => String(l.id) === e.target.value);
+                const found = lessons.find(
+                  (l) => String(l.id) === e.target.value,
+                );
                 if (found) setTitle(found.topic ?? found.title ?? "");
               }}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] text-gray-700 bg-white outline-none focus:border-violet-400 transition-colors appearance-none cursor-pointer"
@@ -239,13 +313,17 @@ export default function HomeworkCreate() {
                 ))
               )}
             </select>
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[11px]">▼</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[11px]">
+              ▼
+            </span>
           </div>
         </div>
 
         {/* Sarlavha */}
         <div>
-          <label className="block text-[13px] font-bold text-red-500 mb-2">* Sarlavha</label>
+          <label className="block text-[13px] font-bold text-red-500 mb-2">
+            * Sarlavha
+          </label>
           <input
             type="text"
             value={title}
@@ -257,32 +335,47 @@ export default function HomeworkCreate() {
 
         {/* Izoh — Rich text editor */}
         <div>
-          <label className="block text-[13px] font-bold text-red-500 mb-2">* Izoh</label>
+          <label className="block text-[13px] font-bold text-red-500 mb-2">
+            * Izoh
+          </label>
           <RichEditor value={description} onChange={setDescription} />
         </div>
 
         {/* Fayl yuklash */}
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           onClick={() => fileRef.current?.click()}
           className={`border-2 border-dashed rounded-2xl py-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors
             ${dragging ? "border-violet-400 bg-violet-50" : "border-gray-200 hover:border-violet-300 bg-gray-50"}`}
         >
-          <CloudUploadIcon sx={{ fontSize: 36, color: dragging ? "#7C3AED" : "#9CA3AF" }} />
+          <CloudUploadIcon
+            sx={{ fontSize: 36, color: dragging ? "#7C3AED" : "#9CA3AF" }}
+          />
           {file ? (
             <div className="text-center">
-              <p className="text-[13px] font-semibold text-violet-600">{file.name}</p>
-              <p className="text-[12px] text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
+              <p className="text-[13px] font-semibold text-violet-600">
+                {file.name}
+              </p>
+              <p className="text-[12px] text-gray-400">
+                {(file.size / 1024).toFixed(1)} KB
+              </p>
             </div>
           ) : (
-            <p className="text-[13px] text-gray-400">Faylni tanlash yoki shu yerga tashlang</p>
+            <p className="text-[13px] text-gray-400">
+              Faylni tanlash yoki shu yerga tashlang
+            </p>
           )}
           <input
             ref={fileRef}
             type="file"
-            onChange={(e) => { if (e.target.files[0]) setFile(e.target.files[0]); }}
+            onChange={(e) => {
+              if (e.target.files[0]) setFile(e.target.files[0]);
+            }}
             className="hidden"
           />
         </div>
@@ -290,7 +383,10 @@ export default function HomeworkCreate() {
         {/* Tugash vaqti — default 36 soat */}
         <div>
           <label className="block text-[13px] font-bold text-gray-700 mb-2">
-            Tugash vaqti <span className="text-[11px] text-gray-400 font-normal">(default: 36 soat)</span>
+            Tugash vaqti{" "}
+            <span className="text-[11px] text-gray-400 font-normal">
+              (default: 36 soat)
+            </span>
           </label>
           <input
             type="datetime-local"

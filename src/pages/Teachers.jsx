@@ -39,7 +39,9 @@ function toUiTeacher(t) {
     phone: t.phone ?? "—",
     email: t.email ?? "—",
     address: t.address ?? "—",
-    photo: fixPhotoUrl(t.photo ?? t.image ?? t.avatar ?? t.profile_image ?? null),
+    photo: fixPhotoUrl(
+      t.photo ?? t.image ?? t.avatar ?? t.profile_image ?? null,
+    ),
     groups: Array.isArray(t.groups) ? t.groups.map((g) => g.name ?? g) : [],
     extra: 0,
     created: t.created_at
@@ -218,7 +220,9 @@ export default function Teachers() {
       const resolvedGroups = teacherGroups.map((g) => {
         if (g.id != null) return { id: g.id, name: g.name ?? String(g) };
         const found = availableGroups.find((ag) => ag.name === (g.name ?? g));
-        return found ? { id: found.id, name: found.name } : { id: null, name: g.name ?? String(g) };
+        return found
+          ? { id: found.id, name: found.name }
+          : { id: null, name: g.name ?? String(g) };
       });
       setGroups(resolvedGroups);
     } catch {
@@ -735,7 +739,6 @@ export default function Teachers() {
               </button>
             </div>
           </div>
-
 
           {/* Photo */}
           <div>

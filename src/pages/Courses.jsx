@@ -183,9 +183,12 @@ export default function Courses() {
                   setActiveTab(i);
                   if (i === 1 && archivedCourses.length === 0) {
                     setArchiveLoading(true);
-                    coursesApi.getArchive()
+                    coursesApi
+                      .getArchive()
                       .then((res) => {
-                        const list = Array.isArray(res) ? res : (res?.data ?? res?.courses ?? []);
+                        const list = Array.isArray(res)
+                          ? res
+                          : (res?.data ?? res?.courses ?? []);
                         setArchivedCourses(list.map(toUiCourse));
                       })
                       .catch(() => {})
@@ -193,9 +196,11 @@ export default function Courses() {
                   }
                 }}
                 className={`px-4 py-1.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer
-                  ${activeTab === i
-                    ? "bg-white border border-gray-200 shadow-sm text-gray-800"
-                    : "text-gray-400 hover:text-gray-600"}`}
+                  ${
+                    activeTab === i
+                      ? "bg-white border border-gray-200 shadow-sm text-gray-800"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
               >
                 {label}
               </button>
@@ -218,36 +223,54 @@ export default function Courses() {
         )}
 
         {/* Arxiv tab */}
-        {activeTab === 1 && (
-          archiveLoading ? (
-            <div className="py-12 text-center text-sm text-gray-400">{t("common.loading")}</div>
+        {activeTab === 1 &&
+          (archiveLoading ? (
+            <div className="py-12 text-center text-sm text-gray-400">
+              {t("common.loading")}
+            </div>
           ) : archivedCourses.length === 0 ? (
-            <div className="py-12 text-center text-sm text-gray-400">Arxivda kurslar yo'q</div>
+            <div className="py-12 text-center text-sm text-gray-400">
+              Arxivda kurslar yo'q
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
               {archivedCourses.map((course) => (
-                <div key={course.id}
-                  className={`${course.color ?? "bg-gray-50"} opacity-75 rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3`}>
-                  <p className="text-[14px] font-bold text-gray-700">{course.title}</p>
+                <div
+                  key={course.id}
+                  className={`${course.color ?? "bg-gray-50"} opacity-75 rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-3`}
+                >
+                  <p className="text-[14px] font-bold text-gray-700">
+                    {course.title}
+                  </p>
                   {course.description && (
-                    <p className="text-[12px] text-gray-500 line-clamp-2">{course.description}</p>
+                    <p className="text-[12px] text-gray-500 line-clamp-2">
+                      {course.description}
+                    </p>
                   )}
                   <div className="flex flex-wrap gap-2 mt-auto">
                     {course.duration && (
-                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg text-gray-500">{course.duration}</span>
+                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg text-gray-500">
+                        {course.duration}
+                      </span>
                     )}
                     {course.period && (
-                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg text-gray-500">{course.period}</span>
+                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg text-gray-500">
+                        {course.period}
+                      </span>
                     )}
                     {course.price && (
-                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg font-semibold text-gray-600">{course.price} so'm</span>
+                      <span className="text-[11px] bg-white/70 px-2 py-0.5 rounded-lg font-semibold text-gray-600">
+                        {course.price} so'm
+                      </span>
                     )}
                   </div>
                   <button
                     onClick={async () => {
                       try {
                         await coursesApi.update(course.id, { active: true });
-                        setArchivedCourses((p) => p.filter((c) => c.id !== course.id));
+                        setArchivedCourses((p) =>
+                          p.filter((c) => c.id !== course.id),
+                        );
                       } catch (err) {
                         alert("Xatolik: " + (err.message ?? err));
                       }
@@ -259,8 +282,7 @@ export default function Courses() {
                 </div>
               ))}
             </div>
-          )
-        )}
+          ))}
 
         {activeTab === 0 && loading ? (
           <div className="py-12 text-center text-sm text-gray-400">

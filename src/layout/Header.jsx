@@ -37,7 +37,11 @@ export default function Header({ setMobileOpen }) {
 
   const [langOpen, setLangOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState({ groups: [], teachers: [], students: [] });
+  const [results, setResults] = useState({
+    groups: [],
+    teachers: [],
+    students: [],
+  });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const debounceRef = useRef(null);
@@ -48,10 +52,23 @@ export default function Header({ setMobileOpen }) {
     return () => clearInterval(timer);
   }, []);
 
-  const MONTHS_UZ = ["Yan","Fev","Mar","Apr","May","Iyun","Iyul","Avg","Sen","Okt","Noy","Dek"];
-  const DAYS_UZ = ["Yak","Du","Se","Ch","Pa","Ju","Sh"];
+  const MONTHS_UZ = [
+    "Yan",
+    "Fev",
+    "Mar",
+    "Apr",
+    "May",
+    "Iyun",
+    "Iyul",
+    "Avg",
+    "Sen",
+    "Okt",
+    "Noy",
+    "Dek",
+  ];
+  const DAYS_UZ = ["Yak", "Du", "Se", "Ch", "Pa", "Ju", "Sh"];
   const liveDate = `${now.getDate()} ${MONTHS_UZ[now.getMonth()]}, ${now.getFullYear()}`;
-  const liveTime = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
+  const liveTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
   const liveDay = DAYS_UZ[now.getDay()];
 
   useEffect(() => {
@@ -86,7 +103,9 @@ export default function Header({ setMobileOpen }) {
         .slice(0, 4);
 
       const teachers = normalize(teachersRes.value)
-        .filter((tc) => (tc.full_name ?? tc.name ?? "").toLowerCase().includes(ql))
+        .filter((tc) =>
+          (tc.full_name ?? tc.name ?? "").toLowerCase().includes(ql),
+        )
         .slice(0, 4);
 
       const students = normalize(studentsRes.value)
@@ -109,7 +128,8 @@ export default function Header({ setMobileOpen }) {
     debounceRef.current = setTimeout(() => doSearch(val), 400);
   }
 
-  const total = results.groups.length + results.teachers.length + results.students.length;
+  const total =
+    results.groups.length + results.teachers.length + results.students.length;
 
   const currentLang = LANGS.find((l) => l.code === lang) ?? LANGS[0];
 
@@ -129,8 +149,12 @@ export default function Header({ setMobileOpen }) {
         <div className="hidden sm:flex items-center gap-2 border border-gray-200 rounded-xl px-3 py-1.5 hover:bg-gray-50 transition-colors cursor-default select-none">
           <CalendarTodayIcon sx={{ fontSize: 14, color: "#7C3AED" }} />
           <div className="flex flex-col leading-tight">
-            <span className="text-[11px] font-semibold text-gray-500">{liveDate} — {liveDay}</span>
-            <span className="text-[13px] font-bold text-violet-600 tabular-nums">{liveTime}</span>
+            <span className="text-[11px] font-semibold text-gray-500">
+              {liveDate} — {liveDay}
+            </span>
+            <span className="text-[13px] font-bold text-violet-600 tabular-nums">
+              {liveTime}
+            </span>
           </div>
         </div>
 
@@ -147,7 +171,9 @@ export default function Header({ setMobileOpen }) {
         {/* Search */}
         <div ref={searchRef} className="hidden md:block relative">
           <div className="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2 w-44 lg:w-64 hover:border-violet-300 transition-colors bg-white">
-            <SearchIcon sx={{ fontSize: 16, color: searching ? "#7C3AED" : "#9CA3AF" }} />
+            <SearchIcon
+              sx={{ fontSize: 16, color: searching ? "#7C3AED" : "#9CA3AF" }}
+            />
             <input
               type="text"
               value={query}
@@ -158,9 +184,15 @@ export default function Header({ setMobileOpen }) {
             />
             {query && (
               <button
-                onClick={() => { setQuery(""); setSearchOpen(false); setResults({ groups: [], teachers: [], students: [] }); }}
+                onClick={() => {
+                  setQuery("");
+                  setSearchOpen(false);
+                  setResults({ groups: [], teachers: [], students: [] });
+                }}
                 className="text-gray-400 hover:text-gray-600 cursor-pointer text-[12px] font-bold"
-              >✕</button>
+              >
+                ✕
+              </button>
             )}
           </div>
 
@@ -175,19 +207,31 @@ export default function Header({ setMobileOpen }) {
                 <div className="py-2">
                   {results.groups.length > 0 && (
                     <>
-                      <p className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Guruhlar</p>
+                      <p className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Guruhlar
+                      </p>
                       {results.groups.map((g) => (
                         <button
                           key={g.id}
-                          onClick={() => { navigate(`/dashboard/groups/${g.id}`); setSearchOpen(false); setQuery(""); }}
+                          onClick={() => {
+                            navigate(`/dashboard/groups/${g.id}`);
+                            setSearchOpen(false);
+                            setQuery("");
+                          }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-violet-50 transition-colors cursor-pointer text-left"
                         >
                           <div className="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                            <span className="text-violet-600 text-[11px] font-bold">{(g.name ?? "G")[0].toUpperCase()}</span>
+                            <span className="text-violet-600 text-[11px] font-bold">
+                              {(g.name ?? "G")[0].toUpperCase()}
+                            </span>
                           </div>
                           <div>
-                            <p className="text-[13px] font-semibold text-gray-800">{g.name ?? "—"}</p>
-                            <p className="text-[11px] text-gray-400">{g.course?.name ?? ""}</p>
+                            <p className="text-[13px] font-semibold text-gray-800">
+                              {g.name ?? "—"}
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {g.course?.name ?? ""}
+                            </p>
                           </div>
                         </button>
                       ))}
@@ -196,17 +240,29 @@ export default function Header({ setMobileOpen }) {
 
                   {results.teachers.length > 0 && (
                     <>
-                      <p className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">O'qituvchilar</p>
+                      <p className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        O'qituvchilar
+                      </p>
                       {results.teachers.map((tc) => (
                         <button
                           key={tc.id}
-                          onClick={() => { navigate("/dashboard/teachers"); setSearchOpen(false); setQuery(""); }}
+                          onClick={() => {
+                            navigate("/dashboard/teachers");
+                            setSearchOpen(false);
+                            setQuery("");
+                          }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-violet-50 transition-colors cursor-pointer text-left"
                         >
                           <div className="w-7 h-7 rounded-full bg-linear-to-br from-violet-400 to-blue-400 flex items-center justify-center shrink-0">
-                            <span className="text-white text-[11px] font-bold">{(tc.full_name ?? tc.name ?? "T")[0].toUpperCase()}</span>
+                            <span className="text-white text-[11px] font-bold">
+                              {(tc.full_name ??
+                                tc.name ??
+                                "T")[0].toUpperCase()}
+                            </span>
                           </div>
-                          <p className="text-[13px] font-semibold text-gray-800">{tc.full_name ?? tc.name ?? "—"}</p>
+                          <p className="text-[13px] font-semibold text-gray-800">
+                            {tc.full_name ?? tc.name ?? "—"}
+                          </p>
                         </button>
                       ))}
                     </>
@@ -214,19 +270,31 @@ export default function Header({ setMobileOpen }) {
 
                   {results.students.length > 0 && (
                     <>
-                      <p className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">O'quvchilar</p>
+                      <p className="px-4 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        O'quvchilar
+                      </p>
                       {results.students.map((s) => (
                         <button
                           key={s.id}
-                          onClick={() => { navigate("/dashboard/students"); setSearchOpen(false); setQuery(""); }}
+                          onClick={() => {
+                            navigate("/dashboard/students");
+                            setSearchOpen(false);
+                            setQuery("");
+                          }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-violet-50 transition-colors cursor-pointer text-left"
                         >
                           <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
-                            <span className="text-gray-600 text-[11px] font-bold">{(s.full_name ?? s.name ?? "S")[0].toUpperCase()}</span>
+                            <span className="text-gray-600 text-[11px] font-bold">
+                              {(s.full_name ?? s.name ?? "S")[0].toUpperCase()}
+                            </span>
                           </div>
                           <div>
-                            <p className="text-[13px] font-semibold text-gray-800">{s.full_name ?? s.name ?? "—"}</p>
-                            <p className="text-[11px] text-gray-400">{s.phone ?? ""}</p>
+                            <p className="text-[13px] font-semibold text-gray-800">
+                              {s.full_name ?? s.name ?? "—"}
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {s.phone ?? ""}
+                            </p>
                           </div>
                         </button>
                       ))}
@@ -247,9 +315,16 @@ export default function Header({ setMobileOpen }) {
             className="flex items-center gap-1.5 border border-gray-200 rounded-lg px-3 py-1.5 text-[13px] text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors select-none"
           >
             <LanguageIcon sx={{ fontSize: 15, color: "#6B7280" }} />
-            <span>{currentLang.flag} {currentLang.label}</span>
+            <span>
+              {currentLang.flag} {currentLang.label}
+            </span>
             <ExpandMoreIcon
-              sx={{ fontSize: 15, color: "#9CA3AF", transform: langOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}
+              sx={{
+                fontSize: 15,
+                color: "#9CA3AF",
+                transform: langOpen ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s",
+              }}
             />
           </button>
 
@@ -258,13 +333,20 @@ export default function Header({ setMobileOpen }) {
               {LANGS.map((l) => (
                 <button
                   key={l.code}
-                  onClick={() => { setLang(l.code); setLangOpen(false); }}
+                  onClick={() => {
+                    setLang(l.code);
+                    setLangOpen(false);
+                  }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors cursor-pointer
                     ${lang === l.code ? "bg-violet-50 text-violet-700 font-semibold" : "text-gray-700 hover:bg-gray-50"}`}
                 >
                   <span className="text-base">{l.flag}</span>
                   <span>{l.label}</span>
-                  {lang === l.code && <span className="ml-auto text-violet-500 text-[11px]">✓</span>}
+                  {lang === l.code && (
+                    <span className="ml-auto text-violet-500 text-[11px]">
+                      ✓
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -281,7 +363,11 @@ export default function Header({ setMobileOpen }) {
           onClick={toggleDark}
           className="hidden sm:flex w-9 h-9 rounded-full border border-gray-200 items-center justify-center hover:bg-violet-50 hover:border-violet-200 transition-colors cursor-pointer"
         >
-          {dark ? <LightModeIcon sx={{ fontSize: 18, color: "#F59E0B" }} /> : <DarkModeIcon sx={{ fontSize: 18, color: "#6B7280" }} />}
+          {dark ? (
+            <LightModeIcon sx={{ fontSize: 18, color: "#F59E0B" }} />
+          ) : (
+            <DarkModeIcon sx={{ fontSize: 18, color: "#6B7280" }} />
+          )}
         </button>
 
         {/* Avatar */}

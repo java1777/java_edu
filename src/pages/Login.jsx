@@ -13,35 +13,33 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import studyImg from "../assets/study.svg";
 import logoImg from "../assets/logo-md.png";
-import { saveToken } from "../hooks/useAuth";
-
-const API_URL = "https://najot-edu.softwareengineer.uz/api/v1/auth/login";
+import { authApi } from "../api/auth";
+import ResetPasswordModal from "../components/ResetPasswordModal";
+import {
+  saveToken,
+  saveRole,
+  extractRole,
+  getRole,
+  getHomePathForRole,
+} from "../hooks/useAuth";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [name, setName] = useState(() => localStorage.getItem("user_name") ?? "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetDoneOpen, setResetDoneOpen] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setLoading(true);
     try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(data?.message || "Telefon yoki parol noto'g'ri");
-        return;
-      }
+      const data = await authApi.login({ phone, password });
       const token =
         data?.token ??
         data?.access_token ??
@@ -49,11 +47,40 @@ export default function Login() {
         data?.data?.token ??
         data?.data?.access_token;
       if (token) saveToken(token);
-      if (name.trim()) localStorage.setItem("user_name", name.trim());
+
+      // Ismni login javobidan olamiz (maydon olib tashlandi)
+      const userName =
+        data?.user?.name ??
+        data?.user?.full_name ??
+        data?.user?.firstName ??
+        data?.name ??
+        data?.full_name ??
+        data?.data?.user?.name ??
+        null;
+      if (userName) localStorage.setItem("user_name", String(userName));
+
+      // role'ni avval response body'dan, bo'lmasa JWT token ichidan aniqlaymiz
+      const role = extractRole(data) ?? getRole();
+      saveRole(role);
+
+      // Diagnostika: role aniqlanmasa backend javobini ko'rish uchun
+      if (!role) {
+        let jwtPayload = null;
+        try {
+          jwtPayload = token ? JSON.parse(atob(token.split(".")[1])) : null;
+        } catch {
+          jwtPayload = "(token JWT emas)";
+        }
+        console.warn(
+          "[Login] Role aniqlanmadi — admin paneliga yo'naltirilmoqda.",
+          { loginResponse: data, jwtPayload },
+        );
+      }
+
       setSuccessOpen(true);
-      navigate("/dashboard");
-    } catch {
-      setErrorMsg("Server bilan bog'lanib bo'lmadi");
+      navigate(getHomePathForRole(role));
+    } catch (err) {
+      setErrorMsg(err?.message || "Telefon yoki parol noto'g'ri");
     } finally {
       setLoading(false);
     }
@@ -96,19 +123,6 @@ export default function Login() {
           onSubmit={handleSubmit}
           className="w-full max-w-sm flex flex-col gap-5"
         >
-          <div>
-            <label className="block text-sm text-gray-700 mb-1">Ismingiz</label>
-            <TextField
-              fullWidth
-              placeholder="Ismingizni kiriting"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              size="small"
-              variant="outlined"
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "4px" } }}
-            />
-          </div>
-
           <div>
             <label className="block text-sm text-gray-700 mb-1">Telefon</label>
             <TextField
@@ -153,6 +167,15 @@ export default function Login() {
               }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: "4px" } }}
             />
+            <div className="flex justify-end mt-1.5">
+              <button
+                type="button"
+                onClick={() => setResetOpen(true)}
+                className="text-xs text-[#1a2b5e] hover:underline cursor-pointer"
+              >
+                Parolni unutdingizmi?
+              </button>
+            </div>
           </div>
 
           {errorMsg && (
@@ -194,7 +217,24 @@ export default function Login() {
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
         <Alert severity="success" variant="filled" sx={{ width: "100%" }}>
-          Muvaffaqiyatli kirildi! Dashboard ga o'tilmoqda...
+          Muvaffaqiyatli kirildi! Yo'naltirilmoqda...
+        </Alert>
+      </Snackbar>
+
+      <ResetPasswordModal
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        onSuccess={() => setResetDoneOpen(true)}
+      />
+
+      <Snackbar
+        open={resetDoneOpen}
+        autoHideDuration={4000}
+        onClose={() => setResetDoneOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: "100%" }}>
+          Parol o'zgartirildi! Endi yangi parol bilan kiring.
         </Alert>
       </Snackbar>
     </div>

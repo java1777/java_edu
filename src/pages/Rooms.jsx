@@ -139,15 +139,19 @@ export default function Rooms() {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             {[t("rooms.title"), t("groups.tab_archive")].map((label, i) => (
-              <button key={i}
+              <button
+                key={i}
                 onClick={() => {
                   setActiveTab(i);
                   if (i === 1 && archivedRooms.length === 0) {
                     setArchiveLoading(true);
                     // GET /rooms/arxive — swagger bo'yicha
-                    roomsApi.getArchive()
+                    roomsApi
+                      .getArchive()
                       .then((res) => {
-                        const list = Array.isArray(res) ? res : (res?.data ?? res?.rooms ?? []);
+                        const list = Array.isArray(res)
+                          ? res
+                          : (res?.data ?? res?.rooms ?? []);
                         setArchivedRooms(list);
                       })
                       .catch(() => {})
@@ -156,18 +160,24 @@ export default function Rooms() {
                 }}
                 className={`px-4 py-1.5 rounded-xl text-[13px] font-semibold transition-colors cursor-pointer
                   ${activeTab === i ? "bg-white border border-gray-200 shadow-sm text-gray-800" : "text-gray-400 hover:text-gray-600"}`}
-              >{label}</button>
+              >
+                {label}
+              </button>
             ))}
             {activeTab === 0 && (
-              <button onClick={loadRooms}
-                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer">
+              <button
+                onClick={loadRooms}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+              >
                 <RefreshIcon sx={{ fontSize: 17, color: "#9CA3AF" }} />
               </button>
             )}
           </div>
           {activeTab === 0 && (
-            <button onClick={openAdd}
-              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer">
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer"
+            >
               <span className="text-lg leading-none">+</span> {t("rooms.add")}
             </button>
           )}
@@ -180,25 +190,37 @@ export default function Rooms() {
         )}
 
         {/* Arxiv tab */}
-        {activeTab === 1 && (
-          archiveLoading ? (
-            <div className="py-12 text-center text-sm text-gray-400">{t("common.loading")}</div>
+        {activeTab === 1 &&
+          (archiveLoading ? (
+            <div className="py-12 text-center text-sm text-gray-400">
+              {t("common.loading")}
+            </div>
           ) : archivedRooms.length === 0 ? (
-            <div className="py-12 text-center text-sm text-gray-400">Arxivda xonalar yo'q</div>
+            <div className="py-12 text-center text-sm text-gray-400">
+              Arxivda xonalar yo'q
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5">
               {archivedRooms.map((room) => (
-                <div key={room.id}
-                  className="bg-gray-50 opacity-75 border border-gray-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
+                <div
+                  key={room.id}
+                  className="bg-gray-50 opacity-75 border border-gray-200 rounded-2xl p-4 flex flex-col gap-3 shadow-sm"
+                >
                   <div>
-                    <p className="text-[13px] font-bold text-gray-700">{room.name}</p>
-                    <p className="text-[12px] text-gray-400 mt-0.5">{t("rooms.col_capacity")}: {room.capacity}</p>
+                    <p className="text-[13px] font-bold text-gray-700">
+                      {room.name}
+                    </p>
+                    <p className="text-[12px] text-gray-400 mt-0.5">
+                      {t("rooms.col_capacity")}: {room.capacity}
+                    </p>
                   </div>
                   <button
                     onClick={async () => {
                       try {
                         await roomsApi.update(room.id, { active: true });
-                        setArchivedRooms((p) => p.filter((r) => r.id !== room.id));
+                        setArchivedRooms((p) =>
+                          p.filter((r) => r.id !== room.id),
+                        );
                       } catch (err) {
                         alert("Xatolik: " + (err.message ?? err));
                       }
@@ -210,8 +232,7 @@ export default function Rooms() {
                 </div>
               ))}
             </div>
-          )
-        )}
+          ))}
 
         {activeTab === 0 && loading ? (
           <div className="py-12 text-center text-sm text-gray-400">
@@ -259,10 +280,17 @@ export default function Rooms() {
       {/* Delete confirmation modal */}
       {deleteId && (
         <div className="fixed inset-0 z-60 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setDeleteId(null)} />
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setDeleteId(null)}
+          />
           <div className="relative bg-white rounded-2xl shadow-2xl px-8 py-7 w-80 z-10">
-            <h3 className="text-[17px] font-bold text-gray-800 mb-2">Xonani o'chirish</h3>
-            <p className="text-[13px] text-gray-500 mb-6">Rostdan ham o'chirishni hohlaysizmi?</p>
+            <h3 className="text-[17px] font-bold text-gray-800 mb-2">
+              Xonani o'chirish
+            </h3>
+            <p className="text-[13px] text-gray-500 mb-6">
+              Rostdan ham o'chirishni hohlaysizmi?
+            </p>
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setDeleteId(null)}

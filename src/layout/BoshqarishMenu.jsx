@@ -23,8 +23,14 @@ export default function BoshqarishMenu({
   }, []);
 
   const menuLeft = isDesktop
-    ? (collapsed ? 64 : 210)
-    : (mobileOpen ? (collapsed ? 64 : 210) : 0);
+    ? collapsed
+      ? 64
+      : 210
+    : mobileOpen
+      ? collapsed
+        ? 64
+        : 210
+      : 0;
 
   return (
     <div
@@ -62,15 +68,22 @@ export default function BoshqarishMenu({
           return (
             <button
               key={i}
-              onClick={() => { navigate(item.path); setMenuOpen(false); }}
+              onClick={() => {
+                navigate(item.path);
+                setMenuOpen(false);
+              }}
               className={`group flex items-center gap-4 px-5 py-4 rounded-2xl w-full text-left
                          transition-colors duration-150 cursor-pointer mb-1
                          ${active ? "bg-violet-50" : "hover:bg-violet-50"}`}
             >
-              <span className={`inline-flex items-center justify-center w-6 h-6 shrink-0 ${active ? "text-violet-600" : "text-gray-400 group-hover:text-violet-500"}`}>
+              <span
+                className={`inline-flex items-center justify-center w-6 h-6 shrink-0 ${active ? "text-violet-600" : "text-gray-400 group-hover:text-violet-500"}`}
+              >
                 {item.icon}
               </span>
-              <span className={`text-[15px] font-semibold leading-none ${active ? "text-violet-700" : "text-gray-700 group-hover:text-violet-700"}`}>
+              <span
+                className={`text-[15px] font-semibold leading-none ${active ? "text-violet-700" : "text-gray-700 group-hover:text-violet-700"}`}
+              >
                 {t(item.labelKey)}
               </span>
             </button>

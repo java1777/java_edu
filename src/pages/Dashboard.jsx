@@ -25,37 +25,70 @@ export default function Dashboard() {
 
   useEffect(() => {
     // GET /students — faol talabalar soni
-    studentsApi.getAll(1, 1000)
+    studentsApi
+      .getAll(1, 1000)
       .then((res) => {
-        const list = Array.isArray(res) ? res : (res?.data ?? res?.students ?? []);
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.students ?? []);
         setStats((p) => ({ ...p, students: list.length }));
       })
       .catch(() => {});
 
     // GET /groups/all — guruhlar soni
-    groupsApi.getAll()
+    groupsApi
+      .getAll()
       .then((res) => {
-        const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.groups ?? []);
         setStats((p) => ({ ...p, groups: list.length }));
       })
       .catch(() => {});
 
     // GET /groups/archive — arxivdagi guruhlar soni
-    groupsApi.getArchive()
+    groupsApi
+      .getArchive()
       .then((res) => {
-        const list = Array.isArray(res) ? res : (res?.data ?? res?.groups ?? []);
+        const list = Array.isArray(res)
+          ? res
+          : (res?.data ?? res?.groups ?? []);
         setStats((p) => ({ ...p, archived: list.length }));
       })
       .catch(() => {});
   }, []);
 
   const CARDS = [
-    { icon: <SchoolIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.active_students", value: stats.students },
-    { icon: <GroupsIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.groups", value: stats.groups },
-    { icon: <CreditCardIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.payments_month", value: stats.payments },
-    { icon: <WarningAmberIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.debtors", value: stats.debtors },
-    { icon: <AcUnitIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.frozen", value: stats.frozen },
-    { icon: <ArchiveIcon sx={{ color: "#7C3AED", fontSize: 28 }} />, labelKey: "dashboard.archived", value: stats.archived },
+    {
+      icon: <SchoolIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      labelKey: "dashboard.active_students",
+      value: stats.students,
+    },
+    {
+      icon: <GroupsIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      labelKey: "dashboard.groups",
+      value: stats.groups,
+    },
+    {
+      icon: <CreditCardIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      labelKey: "dashboard.payments_month",
+      value: stats.payments,
+    },
+    {
+      icon: <WarningAmberIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      labelKey: "dashboard.debtors",
+      value: stats.debtors,
+    },
+    {
+      icon: <AcUnitIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      labelKey: "dashboard.frozen",
+      value: stats.frozen,
+    },
+    {
+      icon: <ArchiveIcon sx={{ color: "#7C3AED", fontSize: 28 }} />,
+      labelKey: "dashboard.archived",
+      value: stats.archived,
+    },
   ];
 
   return (
