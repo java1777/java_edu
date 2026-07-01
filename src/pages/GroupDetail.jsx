@@ -12,6 +12,7 @@ import { attendanceApi } from "../api/attendance";
 import { homeworkApi } from "../api/homework";
 import { filesApi } from "../api/files";
 import { examsApi } from "../api/exams";
+import { teachersApi } from "../api/teachers";
 import { useLanguage } from "../contexts/LanguageContext";
 import { usePanelBase } from "../hooks/usePanelBase";
 
@@ -49,6 +50,72 @@ const MONTH_NAMES_FULL = [
   "Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
   "Iyul", "Avgust", "Sentabr", "Oktabr", "Noyabr", "Dekabr",
 ];
+
+// Backend turli shakl qaytaradi: [...], {data:[...]}, {data:{students:[...]}},
+// {data:{data:[...]}}, {students:[...]} ... — shu sabab massivni chuqur qidiramiz.
+function extractStudents(res) {
+  const seen = new Set();
+  function walk(node, depth) {
+    if (!node || typeof node !== "object" || depth > 6) return null;
+    if (Array.isArray(node)) {
+      return node.length && node.every((x) => x && typeof x === "object") ? node : null;
+    }
+    if (seen.has(node)) return null;
+    seen.add(node);
+    // avval ma'lum kalitlar bo'yicha
+    for (const key of ["students", "data", "result", "items", "rows"]) {
+      if (node[key] !== undefined) {
+        const found = walk(node[key], depth + 1);
+        if (found) return found;
+      }
+    }
+    for (const v of Object.values(node)) {
+      const found = walk(v, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  return walk(res, 0) ?? [];
+}
+
+// O'qituvchi tokeni /groups/one/students/{id} ga 403 oladi. Shu holatda
+// guruh o'quvchilarini /attendance/all yozuvlaridan ajratib olamiz.
+function deriveStudentsFromAttendance(records, groupId) {
+  const list = Array.isArray(records) ? records
+    : Array.isArray(records?.data) ? records.data
+    : Array.isArray(records?.attendances) ? records.attendances
+    : Array.isArray(records?.data?.attendances) ? records.data.attendances
+    : [];
+  const map = new Map();
+  for (const a of list) {
+    const gid = a.group_id ?? a.Group?.id ?? a.groupId ?? a.group?.id;
+    if (Number(gid) !== Number(groupId)) continue;
+    const st = a.Student ?? a.student ?? null;
+    const id = st?.id ?? a.student_id ?? a.studentId;
+    if (id == null) continue;
+    const full_name =
+      st?.full_name ?? st?.name ??
+      a.student_name ?? a.full_name ?? `O'quvchi #${id}`;
+    if (!map.has(id)) map.set(id, { id, full_name, image: st?.image ?? st?.photo ?? null });
+  }
+  return [...map.values()];
+}
+
+// O'qituvchi paneli uchun: /teachers/my/groups javobidan shu guruh o'quvchilari.
+function studentsFromMyGroups(res, groupId) {
+  const groups = Array.isArray(res) ? res
+    : Array.isArray(res?.data) ? res.data
+    : Array.isArray(res?.groups) ? res.groups
+    : Array.isArray(res?.data?.groups) ? res.data.groups
+    : [];
+  const g = groups.find((x) => {
+    const gid = x.id ?? x.group?.id ?? x.group_id;
+    return Number(gid) === Number(groupId);
+  });
+  if (!g) return [];
+  const st = g.students ?? g.group?.students ?? g.Students ?? null;
+  return Array.isArray(st) ? extractStudents(st) : [];
+}
 
 function formatDate(str) {
   if (!str) return "—";
@@ -94,8 +161,18 @@ function LessonCalendar({ lessonDays, groupId, onDaySelect }) {
   const nextLessonStr = nextLesson?.dateStr ?? null;
 
   const months = [...new Set(lessonDays.map((d) => d.month))];
-  const [activeMonth, setActiveMonth] = useState(months[0] ?? null);
-  const [studyMonth, setStudyMonth] = useState(1);
+  // Joriy o'qilayotgan oy: bugungi kunga tegishli oy, bo'lmasa keyingi dars oyi, bo'lmasa birinchi
+  const currentMonthIndex = (() => {
+    const byToday = months.findIndex((m) => MONTH_MAP[m] === today.getMonth());
+    if (byToday !== -1) return byToday;
+    if (nextLesson) {
+      const i = months.indexOf(nextLesson.month);
+      if (i !== -1) return i;
+    }
+    return 0;
+  })();
+  const [activeMonth, setActiveMonth] = useState(months[currentMonthIndex] ?? null);
+  const [studyMonth, setStudyMonth] = useState(currentMonthIndex + 1);
   const [alert, setAlert] = useState(false);
   const [showAllMonths, setShowAllMonths] = useState(false);
 
@@ -130,7 +207,7 @@ function LessonCalendar({ lessonDays, groupId, onDaySelect }) {
             : "border-gray-300 bg-white shadow-sm hover:border-violet-400 hover:shadow-md"}`}
       >
         <span className={`text-[10px] font-medium ${isHighlighted ? "text-white" : isPast ? "text-gray-500" : "text-gray-400"}`}>
-          {MONTH_NAMES_FULL[mI]?.slice(0, 3)}
+          {MONTH_NAMES_UZ[mI]}
         </span>
         <span className={`text-[15px] font-bold ${isHighlighted ? "text-white" : isPast ? "text-gray-600" : "text-gray-800"}`}>
           {entry.day}
@@ -162,7 +239,10 @@ function LessonCalendar({ lessonDays, groupId, onDaySelect }) {
               className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200 disabled:opacity-40">
               <ChevronLeftIcon sx={{ fontSize: 16, color: "#6B7280" }} />
             </button>
-            <span className="text-[13px] font-semibold text-gray-700">{studyMonth}{t("gd.study_month")}</span>
+            <span className="text-[13px] font-semibold text-gray-700">
+              {studyMonth}{t("gd.study_month")}
+              <span className="text-gray-400 font-normal"> · {MONTH_NAMES_FULL[monthIdx]}</span>
+            </span>
             <button onClick={next} disabled={months.indexOf(activeMonth) === months.length - 1}
               className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 cursor-pointer transition-colors border border-gray-200 disabled:opacity-40">
               <ChevronRightIcon sx={{ fontSize: 16, color: "#6B7280" }} />
@@ -186,6 +266,7 @@ function LessonCalendar({ lessonDays, groupId, onDaySelect }) {
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-[13px] font-bold text-gray-700">
                     {mNum + 1}{t("gd.study_month")}
+                    <span className="text-gray-400 font-normal"> · {MONTH_NAMES_FULL[mI]}</span>
                   </span>
                   {isCurrentMonth && (
                     <span className="text-[11px] font-semibold text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
@@ -244,19 +325,46 @@ function LessonInline({ groupId, date, onClose }) {
     return `${Number(d)} ${MONTHS[Number(m) - 1]}, ${y}`;
   })();
 
+  // Faqat bugungi kunga davomat/dars qilish mumkin. O'tib ketgan kun — bloklangan.
+  const isPastDay = (() => {
+    if (!date) return false;
+    const [y, m, d] = date.split("-").map(Number);
+    const dayZero = new Date(y, m - 1, d);
+    const now = new Date();
+    const nowZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return dayZero < nowZero;
+  })();
+
+  // Qulflash: dars saqlangan yoki kun o'tib ketgan bo'lsa
+  const locked = saved || isPastDay;
+
   useEffect(() => {
     setLoading(true);
     setSaved(false); setTopic(""); setDescription(""); setTopicError(""); setSaveError("");
     Promise.all([
       groupsApi.getStudents(groupId).catch(() => null),
       lessonsApi.getByGroup(groupId).catch(() => null),
-    ]).then(([studRes, lessonsRes]) => {
-      const studentList = Array.isArray(studRes) ? studRes : (studRes?.data ?? studRes?.students ?? []);
+      attendanceApi.getAll().catch(() => null),
+      teachersApi.getMyGroups().catch(() => null),
+    ]).then(([studRes, lessonsRes, attRes, myGroupsRes]) => {
+      // 1) Admin: getStudents ishlaydi. 2) O'qituvchi: /teachers/my/groups dan.
+      // 3) Oxirgi chora: davomat yozuvlaridan.
+      let studentList = extractStudents(studRes);
+      if (studentList.length === 0) studentList = studentsFromMyGroups(myGroupsRes, groupId);
+      if (studentList.length === 0) studentList = deriveStudentsFromAttendance(attRes, groupId);
       setStudents(studentList);
+
       const lessonList = Array.isArray(lessonsRes) ? lessonsRes : (lessonsRes?.data ?? lessonsRes?.lessons ?? []);
       const todayLesson = lessonList.find((l) => l.date === date || l.date?.startsWith(date) || l.created_at?.startsWith(date));
       const attMap = {};
       studentList.forEach((s) => { attMap[s.id] = false; });
+
+      // Barcha davomat yozuvlari (saqlangan davomatni ko'rsatish uchun)
+      const attRaw = Array.isArray(attRes) ? attRes
+        : Array.isArray(attRes?.data) ? attRes.data
+        : Array.isArray(attRes?.data?.attendances) ? attRes.data.attendances
+        : Array.isArray(attRes?.attendances) ? attRes.attendances
+        : [];
 
       if (todayLesson) {
         setSaved(true);
@@ -268,25 +376,14 @@ function LessonInline({ groupId, date, onClose }) {
 
         if (attList) {
           attList.forEach((a) => { if (a.student_id != null) attMap[a.student_id] = a.is_attended ?? a.isPresent ?? false; });
-          setAttendance(attMap);
         } else {
-          // Backend lesson.attendance bo'sh bo'lsa — API dan yuklash
-          attendanceApi.getAll()
-            .then((attRes) => {
-              const raw = Array.isArray(attRes) ? attRes
-                : Array.isArray(attRes?.data) ? attRes.data
-                : Array.isArray(attRes?.data?.attendances) ? attRes.data.attendances
-                : Array.isArray(attRes?.attendances) ? attRes.attendances
-                : [];
-              raw.filter((a) => Number(a.group_id) === Number(groupId) || a.Group?.id === Number(groupId))
-                .forEach((a) => {
-                  const sid = Number(a.student_id ?? a.Student?.id);
-                  if (sid) attMap[sid] = a.isPresent ?? a.is_attended ?? false;
-                });
-              setAttendance({ ...attMap });
-            })
-            .catch(() => setAttendance(attMap));
+          attRaw.filter((a) => Number(a.group_id ?? a.Group?.id) === Number(groupId))
+            .forEach((a) => {
+              const sid = Number(a.student_id ?? a.Student?.id);
+              if (sid) attMap[sid] = a.isPresent ?? a.is_attended ?? false;
+            });
         }
+        setAttendance({ ...attMap });
       } else {
         setAttendance(attMap);
       }
@@ -294,6 +391,7 @@ function LessonInline({ groupId, date, onClose }) {
   }, [groupId, date]);
 
   async function handleSave() {
+    if (locked) return;
     if (!topic.trim()) { setTopicError(t("gd.topic_required")); return; }
     setTopicError(""); setSaveError(""); setSaving(true);
     try {
@@ -328,12 +426,19 @@ function LessonInline({ groupId, date, onClose }) {
             </div>
           )}
 
+          {isPastDay && !saved && (
+            <div className="bg-amber-50 text-amber-700 text-[12px] px-3 py-2 rounded-xl flex items-center gap-2">
+              <span>⚠</span>
+              <span>Bu kun o'tib ketgan — davomat qilib bo'lmaydi. Davomat faqat shu kunning o'zida olinadi.</span>
+            </div>
+          )}
+
           {/* Lesson type */}
           <div className="flex items-center gap-5">
             {["plan","other"].map((v) => (
-              <label key={v} className={`flex items-center gap-2 ${saved ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
+              <label key={v} className={`flex items-center gap-2 ${locked ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}>
                 <input type="radio" name={`lt-${date}`} value={v} checked={lessonType === v}
-                  onChange={() => !saved && setLessonType(v)} disabled={saved}
+                  onChange={() => !locked && setLessonType(v)} disabled={locked}
                   className="accent-violet-600 w-4 h-4" />
                 <span className={`text-[13px] ${v === "other" && lessonType === "other" ? "text-green-500 font-semibold" : "text-gray-600"}`}>
                   {v === "plan" ? "O'quv reja bo'yicha" : "Boshqa"}
@@ -346,19 +451,19 @@ function LessonInline({ groupId, date, onClose }) {
           <div>
             <label className="block text-[12px] font-semibold text-red-500 mb-1">* {t("gd.col_topic")}</label>
             <input type="text" value={topic}
-              onChange={(e) => { if (!saved) { setTopic(e.target.value); setTopicError(""); } }}
-              readOnly={saved} placeholder={t("gd.col_topic")}
+              onChange={(e) => { if (!locked) { setTopic(e.target.value); setTopicError(""); } }}
+              readOnly={locked} placeholder={t("gd.col_topic")}
               className={`w-full border rounded-xl px-3 py-2 text-[13px] outline-none transition-colors
-                ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
+                ${locked ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
                   : topicError ? "border-red-400 bg-white" : "border-gray-200 focus:border-violet-400 bg-white"}`} />
             {topicError && <p className="text-[11px] text-red-500 mt-0.5">{topicError}</p>}
           </div>
 
           {/* Description */}
-          <textarea value={description} onChange={(e) => { if (!saved) setDescription(e.target.value); }}
-            readOnly={saved} placeholder="Tavsif (ixtiyoriy)" rows={2}
+          <textarea value={description} onChange={(e) => { if (!locked) setDescription(e.target.value); }}
+            readOnly={locked} placeholder="Tavsif (ixtiyoriy)" rows={2}
             className={`w-full border rounded-xl px-3 py-2 text-[13px] outline-none resize-none transition-colors
-              ${saved ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed" : "border-gray-200 focus:border-violet-400 bg-white"}`} />
+              ${locked ? "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed" : "border-gray-200 focus:border-violet-400 bg-white"}`} />
 
           {/* Students */}
           {students.length > 0 && (
@@ -378,8 +483,8 @@ function LessonInline({ groupId, date, onClose }) {
                       </div>
                       <span className="text-[13px] text-gray-800">{name}</span>
                     </div>
-                    <button onClick={() => !saved && setAttendance((p) => ({ ...p, [s.id]: !p[s.id] }))}
-                      disabled={saved} className={saved ? "cursor-not-allowed opacity-70" : "cursor-pointer"}>
+                    <button onClick={() => !locked && setAttendance((p) => ({ ...p, [s.id]: !p[s.id] }))}
+                      disabled={locked} className={locked ? "cursor-not-allowed opacity-70" : "cursor-pointer"}>
                       {came
                         ? <div className="w-6 h-6 rounded-full bg-green-500 shadow-sm" />
                         : <div className="w-10 h-5 rounded-full bg-gray-200 relative"><span className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow" /></div>
@@ -393,10 +498,10 @@ function LessonInline({ groupId, date, onClose }) {
 
           {/* Save button */}
           <div className="flex justify-end">
-            <button onClick={handleSave} disabled={saving || saved}
+            <button onClick={handleSave} disabled={saving || locked}
               className={`text-[13px] font-semibold px-5 py-2 rounded-xl transition-colors
-                ${saved ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"}`}>
-              {saving ? "Saqlanmoqda..." : saved ? "Dars allaqachon saqlangan" : "Saqlash"}
+                ${locked ? "bg-gray-200 text-gray-500 cursor-not-allowed" : "bg-violet-600 hover:bg-violet-700 text-white cursor-pointer"}`}>
+              {saving ? "Saqlanmoqda..." : saved ? "Dars allaqachon saqlangan" : isPastDay ? "O'tib ketgan kun — davomat qilib bo'lmaydi" : "Saqlash"}
             </button>
           </div>
         </div>
@@ -487,6 +592,7 @@ export default function GroupDetail() {
         // /groups/one/{id} → start_time, end_time, week_day, room, start_date, end_date
         const g1 = one?.data ?? one;
         setGroupOne(g1);
+
 
         // GET /groups/{groupId}/schedules
         const schedList = Array.isArray(schedRaw)
@@ -585,10 +691,14 @@ export default function GroupDetail() {
     Promise.all([
       groupsApi.getStudents(id).catch(() => null),
       attendanceApi.getAll().catch(() => null),
-    ]).then(([studRes, attRes]) => {
-      const studList = Array.isArray(studRes) ? studRes : (studRes?.data ?? studRes?.students ?? []);
+      teachersApi.getMyGroups().catch(() => null),
+    ]).then(([studRes, attRes, myGroupsRes]) => {
+      const attList = Array.isArray(attRes) ? attRes : (attRes?.data ?? attRes?.attendance ?? attRes?.attendances ?? []);
+      // 1) Admin: getStudents. 2) O'qituvchi: /teachers/my/groups. 3) Davomatdan.
+      let studList = extractStudents(studRes);
+      if (studList.length === 0) studList = studentsFromMyGroups(myGroupsRes, id);
+      if (studList.length === 0) studList = deriveStudentsFromAttendance(attList, id);
       setStudents(studList);
-      const attList = Array.isArray(attRes) ? attRes : (attRes?.data ?? attRes?.attendance ?? []);
       setAttendance(attList);
     }).finally(() => setAttendanceLoading(false));
   }, [id, activeTab]);
